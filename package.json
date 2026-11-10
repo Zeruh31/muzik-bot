@@ -1,0 +1,50 @@
+{
+  "name": "muzik-bot",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Discord muzik botu (discord.js v14 + @discordjs/voice; Lavalink v4 REST ile arama ve YouTube ses kaynagi)",
+  "license": "MIT",
+  "author": "Kutluay DOLKAN",
+  "homepage": "https://github.com/Zeruh31/muzik-bot#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zeruh31/muzik-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Zeruh31/muzik-bot/issues"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "hepsi": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/hepsini-baslat.ps1",
+    "lavalink": "pwsh -NoProfile -ExecutionPolicy Bypass -File lavalink/baslat.ps1",
+    "lavalink:indir": "pwsh -NoProfile -ExecutionPolicy Bypass -File lavalink/indir.ps1",
+    "deploy-commands": "node scripts/deploy-commands.js",
+    "youtube-token": "node scripts/youtube-token.js",
+    "kontrol": "node scripts/kontrol.js",
+    "masaustu": "npm --prefix desktop start",
+    "masaustu:paket": "npm --prefix desktop run dist",
+    "check": "node scripts/check.js && node scripts/deploy-commands.js --check",
+    "test": "node --test \"test/**/*.test.js\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@discordjs/opus": "0.11.0",
+    "@discordjs/voice": "0.19.2",
+    "discord.js": "14.28.1",
+    "express": "5.3.0",
+    "express-rate-limit": "8.7.1",
+    "express-session": "1.19.0"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "5.2.0"
+  }
+}

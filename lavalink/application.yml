@@ -1,0 +1,164 @@
+# Lavalink 4.2.x configuration for the music bot.
+#
+# Secrets are NOT stored here. baslat.ps1 reads them from the project's .env file
+# and passes them to Java as environment variables, which Spring resolves through
+# the ${NAME:default} placeholders below.
+
+server:
+  # Same LAVALINK_PORT the bot connects to (.env); baslat.ps1 passes it to Java.
+  port: ${LAVALINK_PORT:2333}
+  # Only listen on this machine. The bot runs on the same PC.
+  address: 127.0.0.1
+  http2:
+    enabled: false
+
+lavalink:
+  plugins:
+    # YouTube source (replaces Lavalink's dead built-in YouTube source).
+    # Pinned to master commit 2be8e542 (2026-09-17), a SNAPSHOT build from
+    # maven.lavalink.dev/snapshots: release 1.18.2 can no longer play most videos
+    # (all clients fail). See README > Teknik notlar. Lavalink deletes the old jar itself.
+    - dependency: 'dev.lavalink.youtube:youtube-plugin:2be8e542d3f6f178e048dca565892684c2e40177'
+      snapshot: true
+    # Spotify links -> YouTube mirroring, plus lyrics sources (LRCLIB, YouTube Music).
+    - dependency: 'com.github.topi314.lavasrc:lavasrc-plugin:4.8.3'
+      snapshot: false
+    # Lyrics REST API used by /lyrics.
+    - dependency: 'com.github.topi314.lavalyrics:lavalyrics-plugin:1.1.0'
+      snapshot: false
+  pluginsDir: './plugins'
+  server:
+    password: '${LAVALINK_PASSWORD}'
+    sources:
+      # Built-in YouTube source is deprecated and broken; youtube-plugin is used instead.
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      nico: false
+      # Direct HTTP links are disabled so random URLs cannot make this PC fetch arbitrary hosts.
+      http: false
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    nonAllocatingFrameBuffer: false
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: LOW
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 1
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    timeouts:
+      connectTimeoutMs: 5000
+      connectionRequestTimeoutMs: 5000
+      socketTimeoutMs: 5000
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    # Clients are tried in this order for playback. IOS comes first: it needs no signature
+    # deciphering, which currently fails for TV/WEB/MWEB ("Must find sig function"), and
+    # it played every tested video with this snapshot. TV (signed in with OAuth) stays as a
+    # fallback, e.g. for age-restricted videos once deciphering works again.
+    # MUSIC handles ytmsearch; ANDROID_VR / WEB / WEBEMBEDDED are further fallbacks.
+    clients:
+      - IOS
+      - TV
+      - MUSIC
+      - ANDROID_VR
+      - WEB
+      - WEBEMBEDDED
+    clientOptions:
+      IOS:
+        # IOS search returns empty results, which would break ytsearch (and Spotify
+        # mirroring through LavaSrc); searching is left to the clients after it.
+        searching: false
+    oauth:
+      enabled: true
+      # Empty on the first run: the plugin then prints a google.com/device code in the
+      # console. After signing in (with a SPARE Google account) the refresh token is
+      # printed; save it with `npm run youtube-token` and it is reused from then on.
+      refreshToken: '${YOUTUBE_OAUTH_REFRESH_TOKEN:}'
+      skipInitialization: false
+
+  lavasrc:
+    providers:
+      - 'ytsearch:"%ISRC%"'
+      - 'ytsearch:%QUERY%'
+    sources:
+      # baslat.ps1 sets SPOTIFY_ENABLED=true only when both Spotify keys exist in .env.
+      spotify: ${SPOTIFY_ENABLED:false}
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+      youtube: false
+      vkmusic: false
+      tidal: false
+      qobuz: false
+      ytdlp: false
+      jiosaavn: false
+    lyrics-sources:
+      spotify: false
+      deezer: false
+      youtube: true
+      yandexmusic: false
+      vkmusic: false
+      lrcLib: true
+    spotify:
+      clientId: '${SPOTIFY_CLIENT_ID:}'
+      clientSecret: '${SPOTIFY_CLIENT_SECRET:}'
+      countryCode: 'TR'
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+      resolveArtistsInSearch: true
+      localFiles: false
+      preferPartnerApi: false
+      preferV1SearchApi: false
+
+  lavalyrics:
+    sources:
+      - youtube
+      - lrcLib
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ''
+  environment: ''
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+    # Shows the google.com/device code and the refresh token during the OAuth flow.
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
+  request:
+    enabled: false
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7

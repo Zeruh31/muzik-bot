@@ -1,0 +1,96 @@
+{
+  "name": "muzik-bot-masaustu",
+  "productName": "Müzik Bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Müzik botunu ve Lavalink'i konsol pencereleri açmadan yöneten Windows uygulaması",
+  "license": "MIT",
+  "author": "Kutluay DOLKAN",
+  "homepage": "https://github.com/Zeruh31/muzik-bot#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zeruh31/muzik-bot.git",
+    "directory": "desktop"
+  },
+  "bugs": {
+    "url": "https://github.com/Zeruh31/muzik-bot/issues"
+  },
+  "type": "commonjs",
+  "main": "src/main/main.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "postinstall": "node scripts/ensure-electron.js",
+    "start": "electron .",
+    "test": "node --test \"test/**/*.test.js\"",
+    "icons": "node scripts/make-icons.js",
+    "build": "electron-builder --win --x64 --publish never",
+    "dist": "electron-builder --win --x64 --publish never",
+    "e2e": "node scripts/e2e.js"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.muzikbot.masaustu",
+    "productName": "Müzik Bot",
+    "copyright": "Copyright © 2026 Kutluay DOLKAN",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "!src/**/*.test.js"
+    ],
+    "asarUnpack": [
+      "src/main/watchdog.js"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Müzik Bot",
+      "artifactName": "MuzikBot-Kurulum-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "MuzikBot-Tasinabilir-${version}.${ext}"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    }
+  }
+}

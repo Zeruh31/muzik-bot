@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Müzik Bot Paneli</title>
+    <link rel="stylesheet" href="/static/panel.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero card center">
+        <h1>🎵 Müzik Bot Paneli</h1>
+        <p class="muted">Sunucularınızda çalan müziği görmek ve yönetmek için Discord hesabınızla giriş yapın.</p>
+        <div id="error" class="alert error hidden" role="alert"></div>
+        <a class="button primary" href="/auth/login">Discord ile giriş yap</a>
+        <p class="muted small-print">
+          Panel yalnızca adınızı, profil resminizi ve hangi sunucularda olduğunuzu okur. Mesajlarınıza erişmez.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/static/login.js"></script>
+  </body>
+</html>

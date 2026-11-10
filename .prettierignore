@@ -1,0 +1,7 @@
+node_modules
+package-lock.json
+lavalink/plugins
+lavalink/logs
+lavalink/*.jar
+*.md
+desktop/dist

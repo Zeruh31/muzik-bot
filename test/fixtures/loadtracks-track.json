@@ -1,0 +1,21 @@
+{
+  "loadType": "track",
+  "data": {
+    "encoded": "QAAAvgMAKlRBUktBTiAtIMWexLFtYXLEsWsgKE9mZmljaWFsIE11c2ljIFZpZGVvKQAGVGFya2FuAAAAAAAC7gAAC2NwcDY5Z2hSMUlNAAEAK2h0dHBzOi8vd3d3LnlvdXR1YmUuY29tL3dhdGNoP3Y9Y3BwNjlnaFIxSU0BADBodHRwczovL2kueXRpbWcuY29tL3ZpL2NwcDY5Z2hSMUlNL21xZGVmYXVsdC5qcGcAAAd5b3V0dWJlAAAAAAAAAAA=",
+    "info": {
+      "identifier": "cpp69ghR1IM",
+      "isSeekable": true,
+      "author": "Tarkan",
+      "length": 192000,
+      "isStream": false,
+      "position": 0,
+      "title": "TARKAN - Şımarık (Official Music Video)",
+      "uri": "https://www.youtube.com/watch?v=cpp69ghR1IM",
+      "sourceName": "youtube",
+      "artworkUrl": "https://i.ytimg.com/vi/cpp69ghR1IM/mqdefault.jpg",
+      "isrc": null
+    },
+    "pluginInfo": {},
+    "userData": {}
+  }
+}

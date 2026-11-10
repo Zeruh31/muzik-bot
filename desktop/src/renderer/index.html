@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://cdn.discordapp.com; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Müzik Bot</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="icon.png" alt="" class="brand-icon" />
+          <div>
+            <div class="brand-name">Müzik Bot</div>
+            <div class="brand-sub" id="brand-sub">Kontrol merkezi</div>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Bölümler">
+          <button class="nav-item active" data-view="home">
+            <span class="nav-ico" aria-hidden="true">⏻</span>Ana ekran
+          </button>
+          <button class="nav-item" data-view="servers">
+            <span class="nav-ico" aria-hidden="true">◫</span>Sunucular
+          </button>
+          <button class="nav-item" data-view="stats">
+            <span class="nav-ico" aria-hidden="true">▤</span>İstatistikler
+          </button>
+          <button class="nav-item" data-view="logs"><span class="nav-ico" aria-hidden="true">☰</span>Kayıtlar</button>
+          <button class="nav-item" data-view="settings">
+            <span class="nav-ico" aria-hidden="true">⚙</span>Ayarlar
+          </button>
+          <button class="nav-item" data-view="tools"><span class="nav-ico" aria-hidden="true">✦</span>Araçlar</button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="foot-label">Proje klasörü</div>
+          <div class="foot-path" id="project-path">-</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <div id="conflict-banner"></div>
+        <div id="banners"></div>
+
+        <!-- Home -->
+        <section class="view active" id="view-home">
+          <header class="view-head">
+            <h1>Ana ekran</h1>
+            <p class="muted">Botu ve müzik sunucusunu (Lavalink) tek düğmeyle açıp kapatın.</p>
+          </header>
+
+          <div class="hero">
+            <button id="power" class="power" type="button">
+              <span class="power-ring" aria-hidden="true"></span>
+              <span class="power-label" id="power-label">Başlat</span>
+            </button>
+            <div class="hero-text">
+              <div class="hero-title" id="hero-title">Bot kapalı</div>
+              <div class="muted" id="hero-sub">Başlat'a basınca önce Lavalink, hazır olunca bot açılır.</div>
+              <div class="alert error hidden" id="hero-error" role="alert"></div>
+            </div>
+          </div>
+
+          <div class="cards">
+            <article class="card status-card" id="card-lavalink">
+              <div class="card-head">
+                <span class="card-title">Lavalink</span>
+                <span class="pill" data-role="pill">Kapalı</span>
+              </div>
+              <div class="card-body" data-role="body">Müzik sunucusu</div>
+            </article>
+            <article class="card status-card" id="card-bot">
+              <div class="card-head">
+                <span class="card-title">Bot</span>
+                <span class="pill" data-role="pill">Kapalı</span>
+              </div>
+              <div class="card-body" data-role="body">Discord bağlantısı</div>
+            </article>
+            <article class="card status-card" id="card-youtube">
+              <div class="card-head">
+                <span class="card-title">YouTube girişi</span>
+                <span class="pill" data-role="pill">-</span>
+              </div>
+              <div class="card-body" data-role="body"></div>
+              <div class="card-actions" data-role="actions"></div>
+            </article>
+            <article class="card status-card" id="card-panel">
+              <div class="card-head">
+                <span class="card-title">Web paneli</span>
+                <span class="pill" data-role="pill">-</span>
+              </div>
+              <div class="card-body" data-role="body"></div>
+              <div class="card-actions" data-role="actions"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Servers -->
+        <section class="view" id="view-servers">
+          <header class="view-head">
+            <h1>Sunucular</h1>
+            <p class="muted">Botun bulunduğu sunucular. Bilgiler bot çalışırken birkaç saniyede bir yenilenir.</p>
+          </header>
+          <div class="alert warn hidden" id="servers-stale"></div>
+          <div class="toolbar">
+            <input id="server-search" class="input search" type="search" placeholder="Sunucu ara..." />
+            <label class="muted small" for="server-sort">Sırala</label>
+            <select id="server-sort" class="input sort">
+              <option value="name">Ada göre</option>
+              <option value="members">Üye sayısına göre</option>
+              <option value="joined">Katılma tarihine göre (yeni önce)</option>
+              <option value="songs">Çalınan şarkıya göre</option>
+            </select>
+            <div class="toolbar-spacer"></div>
+            <span class="muted small" id="server-count"></span>
+          </div>
+          <div class="server-layout">
+            <div class="server-grid" id="server-grid"></div>
+            <aside class="card server-detail" id="server-detail" aria-live="polite"></aside>
+          </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="view" id="view-stats">
+          <header class="view-head">
+            <h1>İstatistikler</h1>
+            <p class="muted">
+              Botun anlık durumu ve sayaçları. Grafikler bu oturumda uygulamanın topladığı örneklerdir.
+            </p>
+          </header>
+          <div class="alert warn hidden" id="stats-stale"></div>
+          <div class="tiles" id="stat-tiles"></div>
+          <div class="charts">
+            <article class="card chart-card">
+              <h2>Ping</h2>
+              <div class="chart" id="chart-ping"></div>
+            </article>
+            <article class="card chart-card">
+              <h2>Bot belleği</h2>
+              <div class="chart" id="chart-memory"></div>
+            </article>
+            <article class="card chart-card">
+              <h2>Çalan oyuncu</h2>
+              <div class="chart" id="chart-players"></div>
+            </article>
+          </div>
+          <div class="lists">
+            <article class="card">
+              <h2>En çok kullanılan komutlar</h2>
+              <ol class="rank-list" id="top-commands"></ol>
+            </article>
+            <article class="card">
+              <h2>En çok çalınan şarkılar</h2>
+              <ol class="rank-list" id="top-songs"></ol>
+            </article>
+          </div>
+        </section>
+
+        <!-- Logs -->
+        <section class="view" id="view-logs">
+          <header class="view-head">
+            <h1>Kayıtlar</h1>
+            <p class="muted">Bot ve Lavalink'in yazdıkları. Gizli bilgiler (token, şifre) *** ile gizlenir.</p>
+          </header>
+          <div class="toolbar">
+            <div class="segmented" id="log-source" role="group" aria-label="Kaynak">
+              <button data-source="" class="active">Hepsi</button>
+              <button data-source="bot">Bot</button>
+              <button data-source="lavalink">Lavalink</button>
+              <button data-source="app">Uygulama</button>
+            </div>
+            <div class="segmented" id="log-level" role="group" aria-label="Seviye">
+              <button data-level="" class="active">Tüm seviyeler</button>
+              <button data-level="warn">Uyarı ve hata</button>
+              <button data-level="error">Yalnız hata</button>
+            </div>
+            <input id="log-search" class="input search" type="search" placeholder="Kayıtlarda ara..." />
+            <div class="toolbar-spacer"></div>
+            <label class="check"><input type="checkbox" id="log-follow" checked /> Sona kaydır</label>
+            <button class="btn" id="log-copy" type="button">Kopyala</button>
+            <button class="btn" id="log-folder" type="button">Kayıt klasörünü aç</button>
+            <button class="btn ghost" id="log-clear" type="button">Temizle</button>
+          </div>
+          <div class="log-list" id="log-list" tabindex="0" aria-live="off"></div>
+          <div class="muted small" id="log-count"></div>
+        </section>
+
+        <!-- Settings -->
+        <section class="view" id="view-settings">
+          <header class="view-head">
+            <h1>Ayarlar</h1>
+            <p class="muted">Botun ayar dosyası (.env). Kaydederken dosyadaki açıklamalar ve sıralama korunur.</p>
+          </header>
+
+          <article class="card form-card">
+            <h2>Uygulama</h2>
+            <div class="option-row">
+              <div>
+                <div class="option-title">Uygulama açılınca botu otomatik başlat</div>
+                <div class="muted small">Uygulama her açıldığında Başlat'a kendisi basar.</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="opt-autostart" /><span></span></label>
+            </div>
+            <div class="option-row">
+              <div>
+                <div class="option-title">Windows açılınca başlat</div>
+                <div class="muted small" id="opt-login-help">
+                  Bilgisayar açılınca uygulama simge durumunda (tepside) başlar.
+                </div>
+              </div>
+              <label class="switch"><input type="checkbox" id="opt-login" /><span></span></label>
+            </div>
+            <div class="option-row">
+              <div>
+                <div class="option-title">Çökerse yeniden başlat</div>
+                <div class="muted small">
+                  Bot ya da Lavalink beklenmedik şekilde kapanırsa artan aralıklarla en fazla 5 kez yeniden dener.
+                </div>
+              </div>
+              <label class="switch"><input type="checkbox" id="opt-restart" /><span></span></label>
+            </div>
+            <div class="option-row">
+              <div>
+                <div class="option-title">Proje klasörü</div>
+                <div class="muted small mono" id="opt-project">-</div>
+              </div>
+              <div class="row-actions">
+                <button class="btn" id="project-choose" type="button">Değiştir...</button>
+                <button class="btn ghost" id="project-reset" type="button">Varsayılan</button>
+              </div>
+            </div>
+          </article>
+
+          <div id="env-form"></div>
+
+          <div class="savebar" id="savebar">
+            <span class="muted" id="savebar-text">Değişiklik yok.</span>
+            <div class="row-actions">
+              <button class="btn ghost" id="env-revert" type="button" disabled>Geri al</button>
+              <button class="btn primary" id="env-save" type="button" disabled>Kaydet</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tools -->
+        <section class="view" id="view-tools">
+          <header class="view-head">
+            <h1>Araçlar</h1>
+            <p class="muted">Kurulum ve bakım işleri. Hepsi arka planda, pencere açmadan çalışır.</p>
+          </header>
+          <div class="tools">
+            <article class="card tool">
+              <h2>Komutları Discord'a kaydet</h2>
+              <p class="muted">
+                İlk kurulumda ve komutlar değiştiğinde bir kez yapılır. Sunucu kimliği doluysa komutlar hemen, boşsa
+                birkaç dakika içinde görünür.
+              </p>
+              <button class="btn primary" id="tool-deploy" type="button">Komutları kaydet</button>
+              <div class="tool-result" id="tool-deploy-result"></div>
+            </article>
+            <article class="card tool">
+              <h2>Kurulum kontrolü</h2>
+              <p class="muted">Node, Java, Lavalink, .env ve Discord erişimini tek tek denetler.</p>
+              <button class="btn primary" id="tool-check" type="button">Kontrol et</button>
+              <div class="tool-result" id="tool-check-result"></div>
+            </article>
+            <article class="card tool">
+              <h2>Lavalink'i indir / güncelle</h2>
+              <p class="muted">
+                Lavalink'i yalnız resmi GitHub sayfasından indirir ve SHA-256 özetini doğrular. Zaten doğru sürüm varsa
+                bir şey yapmaz.
+              </p>
+              <button class="btn primary" id="tool-download" type="button">İndir / doğrula</button>
+              <div class="progress hidden" id="tool-download-progress"><div class="progress-bar"></div></div>
+              <div class="tool-result" id="tool-download-result"></div>
+            </article>
+            <article class="card tool">
+              <h2>YouTube token'ını kaydet</h2>
+              <p class="muted">
+                Giriş yaptıktan sonra token kendiliğinden kaydedilir. Kaydedilmediyse buradan tekrar deneyin.
+              </p>
+              <button class="btn" id="tool-youtube" type="button">Token'ı kaydet</button>
+              <div class="tool-result" id="tool-youtube-result"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal hidden" id="yt-modal" role="dialog" aria-modal="true" aria-labelledby="yt-title">
+      <div class="modal-box">
+        <button class="modal-close" id="yt-close" type="button" aria-label="Kapat">×</button>
+        <h2 id="yt-title">YouTube girişi</h2>
+        <div id="yt-body"></div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="conflict-modal" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+      <div class="modal-box">
+        <h2 id="conflict-title">Bot zaten açık</h2>
+        <div class="alert warn" id="conflict-text"></div>
+        <p class="muted small">
+          "Kapat ve buradan başlat" diğer penceredeki botu (ve Lavalink'i) kapatır, sonra burada açar.
+        </p>
+        <div class="modal-actions" id="conflict-actions"></div>
+      </div>
+    </div>
+
+    <div class="welcome hidden" id="welcome">
+      <div class="welcome-box">
+        <img src="icon.png" alt="" class="welcome-icon" />
+        <h1>Müzik Bot'a hoş geldiniz</h1>
+        <p>
+          Başlamak için <strong>Müzik Bot klasörünü</strong> seçin. Bu, botun kurulu olduğu klasördür; içinde
+          <code>package.json</code> ve <code>src\index.js</code> olmalı.
+        </p>
+        <button class="btn primary big" id="welcome-choose" type="button">Klasörü seç...</button>
+        <div class="alert error hidden" id="welcome-error" role="alert"></div>
+        <p class="muted small">
+          Seçtiğiniz klasör hatırlanır; Ayarlar &gt; Proje klasörü bölümünden değiştirebilirsiniz.
+        </p>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+    <script src="serverList.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

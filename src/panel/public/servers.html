@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Sunucular · Müzik Bot Paneli</title>
+    <link rel="stylesheet" href="/static/panel.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/servers">🎵 Müzik Bot</a>
+      <div id="user" class="user"></div>
+    </header>
+    <main class="wrap">
+      <div class="now">
+        <h1 class="info">Sunucularınız</h1>
+        <button id="refresh" type="button" class="small">Yenile</button>
+      </div>
+      <p class="muted">Botun da bulunduğu sunucular listelenir.</p>
+      <div id="notice" class="alert warn hidden" role="status"></div>
+      <div id="guilds" class="grid" aria-live="polite"></div>
+    </main>
+    <script type="module" src="/static/servers.js"></script>
+  </body>
+</html>

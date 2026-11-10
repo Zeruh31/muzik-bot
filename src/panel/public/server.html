@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Sunucu · Müzik Bot Paneli</title>
+    <link rel="stylesheet" href="/static/panel.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/servers">← Sunucular</a>
+      <div id="user" class="user"></div>
+    </header>
+    <main class="wrap">
+      <h1 id="guild-name">Yükleniyor…</h1>
+      <div id="access" class="alert warn hidden" role="status"></div>
+      <div id="connection" class="alert error hidden" role="alert"></div>
+
+      <section class="card" aria-labelledby="np-heading">
+        <h2 id="np-heading">Şimdi çalıyor</h2>
+        <div id="idle" class="muted">Şu anda çalan bir şarkı yok.</div>
+        <div id="now" class="hidden">
+          <div class="now">
+            <img id="np-art" alt="" />
+            <div class="info">
+              <a id="np-title" class="title" target="_blank" rel="noopener noreferrer"></a>
+              <span id="np-author" class="muted"></span>
+              <div class="progress" aria-hidden="true"><div id="np-bar"></div></div>
+              <div class="times"><span id="np-pos">0:00</span><span id="np-dur">0:00</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="btn-toggle" type="button" data-control>⏯ Duraklat</button>
+          <button id="btn-skip" type="button" data-control>⏭ Atla</button>
+          <button id="btn-stop" type="button" class="danger" data-control>⏹ Durdur</button>
+          <button id="btn-shuffle" type="button" data-control>🔀 Karıştır</button>
+          <button id="btn-loop" type="button" data-control>🔁 Tekrar: Kapalı</button>
+        </div>
+        <div class="volume">
+          <label for="volume">🔊 Ses</label>
+          <input id="volume" type="range" min="1" max="150" step="1" value="80" data-control />
+          <output id="volume-value" for="volume">80</output>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="add-heading">
+        <h2 id="add-heading">Şarkı ekle</h2>
+        <form id="add" class="add">
+          <input
+            id="query"
+            name="query"
+            type="text"
+            maxlength="500"
+            required
+            autocomplete="off"
+            placeholder="Şarkı adı ya da YouTube/Spotify bağlantısı"
+            aria-label="Şarkı adı ya da bağlantı"
+            data-control
+          />
+          <button type="submit" class="primary" data-control>Ekle</button>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="queue-heading">
+        <h2 id="queue-heading">Kuyruk <span id="queue-info" class="muted"></span></h2>
+        <ol id="queue" class="queue"></ol>
+        <div id="queue-empty" class="muted">Kuyrukta bekleyen şarkı yok.</div>
+      </section>
+    </main>
+    <script type="module" src="/static/server.js"></script>
+  </body>
+</html>
