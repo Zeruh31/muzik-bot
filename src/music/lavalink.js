@@ -33,7 +33,26 @@ export function normalizeTrack(track) {
   if (!track || typeof track !== 'object') return track;
   const info = track.info ?? {};
   const length = Number.isFinite(info.length) ? info.length : Number.isFinite(info.duration) ? info.duration : 0;
+  if (isYoutubeLive(info, length)) {
+    return {
+      ...track,
+      info: { ...info, duration: 0, isStream: true, isSeekable: false },
+      pluginInfo: track.pluginInfo ?? {},
+    };
+  }
   return { ...track, info: { ...info, duration: length }, pluginInfo: track.pluginInfo ?? {} };
+}
+
+/**
+ * YouTube does not accept uploads longer than 12 hours, so a "video" longer than that is a live
+ * stream. youtube-plugin reports running live streams with isStream=false and the time since the
+ * stream started as length (jfKfPfyJRdk: ~1400 days), so the length is the reliable signal.
+ */
+export const YOUTUBE_MAX_VIDEO_MS = 12 * 60 * 60 * 1000;
+
+function isYoutubeLive(info, length) {
+  if (String(info.sourceName ?? '').toLowerCase() !== 'youtube') return false;
+  return Boolean(info.isStream) || length > YOUTUBE_MAX_VIDEO_MS + 5 * 60 * 1000;
 }
 
 /**

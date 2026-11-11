@@ -59,12 +59,31 @@ export class TrackQueue {
    * The track that was playing is remembered in `previous`.
    */
   advance() {
-    if (this.current) {
-      this.previous.unshift(this.current);
-      if (this.previous.length > MAX_PREVIOUS) this.previous.length = MAX_PREVIOUS;
-    }
+    if (this.current) this.remember(this.current);
     this.current = this.tracks.shift() ?? null;
     return this.current;
+  }
+
+  /** Puts a track at the top of `previous` (most recent first, at most MAX_PREVIOUS kept). */
+  remember(track) {
+    if (!track) return;
+    this.previous.unshift(track);
+    if (this.previous.length > MAX_PREVIOUS) this.previous.length = MAX_PREVIOUS;
+  }
+
+  /**
+   * Goes back one track (/previous): `current` returns to the front of the waiting tracks and
+   * the most recent previous track becomes `current`. With queue repeat that previous track was
+   * also put at the end of the queue when it ended; it is taken from there so it is not doubled.
+   * Returns the new current track, or null when there is nothing to go back to.
+   */
+  back(repeatMode) {
+    const target = this.previous.shift();
+    if (!target) return null;
+    if (repeatMode === 'queue' && this.tracks.at(-1) === target) this.tracks.pop();
+    if (this.current && this.current !== target) this.tracks.unshift(this.current);
+    this.current = target;
+    return target;
   }
 
   /**

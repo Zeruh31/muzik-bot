@@ -43,7 +43,11 @@ async function main() {
   if (problems.length) {
     throw new Failure(`Komut tanımlarında ${problems.length} sorun var:\n  - ${problems.join('\n  - ')}`);
   }
-  console.log(`Komut tanımları geçerli: ${body.length} komut (${body.map((c) => `/${c.name}`).join(', ')})`);
+  const shown = body.map((c) => ((c.type ?? 1) === 1 ? `/${c.name}` : `"${c.name}" (sağ tık)`));
+  const slash = body.filter((c) => (c.type ?? 1) === 1).length;
+  console.log(
+    `Komut tanımları geçerli: ${body.length} komut, ${slash} eğik çizgi + ${body.length - slash} sağ tık (${shown.join(', ')})`,
+  );
   if (checkOnly) return;
 
   const { token, clientId, guildId } = config.discord;

@@ -3,6 +3,9 @@ import { komutlar } from '../mesajlar.js';
 import { trackLink } from '../util/embeds.js';
 import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpers.js';
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('remove').addIntegerOption((option) =>
   describe(option, 'remove', 'sıra').setRequired(true).setMinValue(1),
 );

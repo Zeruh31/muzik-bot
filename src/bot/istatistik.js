@@ -14,7 +14,9 @@ const count = (value) => (Number.isSafeInteger(value) && value >= 0 ? value : 0)
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 function emptyCounters() {
-  return { songsPlayed: 0, commandsUsed: 0, commands: {}, songs: {}, songsByGuild: {} };
+  // Prototype-free maps: song, command and server keys come from outside (Lavalink, a file).
+  const map = () => Object.create(null);
+  return { songsPlayed: 0, commandsUsed: 0, commands: map(), songs: map(), songsByGuild: map() };
 }
 
 /** Keeps only well-formed parts of a loaded file; anything odd starts from zero. */

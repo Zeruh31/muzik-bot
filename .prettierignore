@@ -5,3 +5,5 @@ lavalink/logs
 lavalink/*.jar
 *.md
 desktop/dist
+process_whitelist.json
+.claude

@@ -1,6 +1,7 @@
 // The desktop app (desktop/) starts the bot, reads its console and data/durum.json. These tests pin
-// what it relies on: entry points, Lavalink files, .env key names, the console lines it parses and
-// the status file schema.
+// what it relies on: entry points, Lavalink files, .env key names, the console lines it parses, the
+// status file schema and the settings bridge (data/sunucu-yapisi/<id>.json, ayar-semasi.json,
+// ayarlar-gorunum.json, istekler/, yanitlar/; desktop/src/main/serverConfig.js reads them).
 // If one of these fails, the desktop app would break too: change the desktop app together with it.
 
 import assert from 'node:assert/strict';
@@ -191,6 +192,133 @@ describe('contract with the desktop app', () => {
       'voice',
       'volume',
     ]);
+  });
+
+  it('the settings bridge keeps its file names, schemas and request format (schemaVersion 1)', async () => {
+    const { DESKTOP_DATA_DIR } = await import('../src/app.js');
+    const { DESKTOP_FILES } = await import('../src/ozellikler/_masaustu/kopru.js');
+    const { STRUCTURE_SCHEMA_VERSION, guildStructure, guildStructureFile } =
+      await import('../src/ozellikler/_masaustu/yapi.js');
+    const { SCHEMA_EXPORT_VERSION, VIEW_SCHEMA_VERSION } = await import('../src/ozellikler/_masaustu/gorunum.js');
+    const { REQUEST_VERSION, REQUEST_NAME, CLAIMED_NAME, MAX_REQUEST_BYTES, parseRequest } =
+      await import('../src/ozellikler/_masaustu/istekler.js');
+    const { ChannelType } = await import('discord.js');
+    assert.equal(DESKTOP_DATA_DIR, join(PROJECT_ROOT, 'data'));
+    assert.deepEqual(
+      { ...DESKTOP_FILES },
+      {
+        yapi: 'sunucu-yapisi',
+        sema: 'ayar-semasi.json',
+        gorunum: 'ayarlar-gorunum.json',
+        istekler: 'istekler',
+        yanitlar: 'yanitlar',
+      },
+    );
+    assert.deepEqual(
+      [STRUCTURE_SCHEMA_VERSION, SCHEMA_EXPORT_VERSION, VIEW_SCHEMA_VERSION, REQUEST_VERSION],
+      [1, 1, 1, 1],
+    );
+    assert.equal(MAX_REQUEST_BYTES, 16 * 1024);
+    assert.ok(REQUEST_NAME.test('0b7c9b2e-3f1d-4c2a-9e8f-1a2b3c4d5e6f.json'));
+    assert.ok(!REQUEST_NAME.test('0b7c9b2e-3f1d-4c2a-9e8f-1a2b3c4d5e6f.json.tmp'));
+    const istek = parseRequest(
+      JSON.stringify({
+        surum: 1,
+        guildId: '111111111111111111',
+        modul: 'karsilama',
+        alan: 'hosgeldin-kanal',
+        deger: null,
+        istenen: new Date().toISOString(),
+      }),
+    );
+    assert.equal(istek.modul, 'karsilama');
+    const yes = { has: () => true };
+    const guild = {
+      id: '111111111111111111',
+      name: 'Sunucu',
+      ownerId: '1',
+      members: { me: { permissions: yes, roles: { highest: { position: 9 } } } },
+      channels: {
+        cache: new Map([
+          [
+            '222222222222222222',
+            { id: '222222222222222222', name: 'genel', type: ChannelType.GuildText, permissionsFor: () => yes },
+          ],
+        ]),
+      },
+      roles: {
+        cache: new Map([
+          [
+            '333333333333333333',
+            { id: '333333333333333333', name: 'Üye', position: 1, permissions: { has: () => false } },
+          ],
+        ]),
+      },
+    };
+    const view = guildStructure(guild);
+    assert.deepEqual(Object.keys(guildStructureFile(guild)).sort(), ['guncellendi', 'schemaVersion', 'sunucu']);
+    // The bot claims a request by renaming it; the app may only take back the .json name.
+    assert.ok(CLAIMED_NAME.test('0b7c9b2e-3f1d-4c2a-9e8f-1a2b3c4d5e6f.isleniyor'));
+    const keys = (object) => Object.keys(object).sort();
+    assert.deepEqual(keys(view), ['ad', 'botRolPozisyonu', 'id', 'kanallar', 'roller', 'rolleriYonetebilir']);
+    assert.deepEqual(keys(view.kanallar[0]), [
+      'ad',
+      'baglanabilir',
+      'id',
+      'kategori',
+      'kategoriId',
+      'tur',
+      'yazabilir',
+    ]);
+    assert.deepEqual(keys(view.roller[0]), [
+      'ad',
+      'id',
+      'neden',
+      'pozisyon',
+      'renk',
+      'tehlikeli',
+      'verilebilir',
+      'yonetilen',
+    ]);
+    // The answer file the app waits for.
+    assert.match(
+      read('src/ozellikler/_masaustu/istekler.js'),
+      /surum: REQUEST_VERSION,\s*id,\s*ok: result\.ok,\s*hata: result\.hata,\s*yeniDeger: result\.yeniDeger,/,
+    );
+  });
+
+  it('getState keeps every field the web panel reads; new fields are only added', async () => {
+    const { MusicService } = await import('../src/music/MusicService.js');
+    const { TrackQueue } = await import('../src/music/Queue.js');
+    const { EventEmitter } = await import('node:events');
+    const queue = new TrackQueue();
+    queue.current = { info: { title: 'a', duration: 1000 } };
+    const player = { guildId: 'g', queue, volume: 80, repeatMode: 'off', position: 0, getData: () => undefined };
+    const engine = Object.assign(new EventEmitter(), { players: new Map([['g', player]]), getPlayer: () => player });
+    const silent = { debug() {}, info() {}, warn() {}, error() {} };
+    const state = new MusicService({ lavalink: {}, engine, config: { music: {} }, logger: silent }).getState('g');
+    assert.deepEqual(Object.keys(state).sort(), [
+      'autoplay', // added for /autoplay
+      'bassboost',
+      'connected',
+      'crossfade', // added for the crossfade setting (seconds, 0 = off)
+      'current',
+      'guildId',
+      'hasPrevious', // added for /previous and the "previous" button
+      'paused',
+      'playing',
+      'position',
+      'positionAt',
+      'queue',
+      'queueDuration',
+      'repeatMode',
+      'textChannelId',
+      'voiceChannelId',
+      'volume',
+    ]);
+    assert.equal(state.autoplay, false);
+    assert.equal(state.hasPrevious, false);
+    assert.equal(state.crossfade, 0);
   });
 
   it('a kicked bot closes its player and the engine forgets it', async () => {

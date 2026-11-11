@@ -328,7 +328,16 @@ function fakeContext() {
   return {
     client,
     music,
-    commands: new Map([['play', {}]]),
+    commands: new Map([
+      ['play', {}],
+      [
+        'muzik',
+        {
+          statName: (interaction) =>
+            interaction.options.getSubcommandGroup(false) ?? interaction.options.getSubcommand(false),
+        },
+      ],
+    ]),
     settings: { getDjRole: (id) => (id === guildA.id ? '333333333333333333' : null) },
     config: {
       discord: { token: TOKEN },
@@ -416,11 +425,19 @@ describe('data/durum.json content', () => {
     const writer = attachStatusFile(context, { file, minGapMs: 0, minPlayMs: 5 });
     context.client.emit(Events.InteractionCreate, { isChatInputCommand: () => true, commandName: 'play' });
     context.client.emit(Events.InteractionCreate, { isChatInputCommand: () => true, commandName: 'yok' });
+    const muzik = (group, sub) => ({
+      isChatInputCommand: () => true,
+      commandName: 'muzik',
+      options: { getSubcommandGroup: () => group, getSubcommand: () => sub },
+    });
+    context.client.emit(Events.InteractionCreate, muzik(null, 'seek'));
+    context.client.emit(Events.InteractionCreate, muzik('liste', 'kaydet'));
     context.music.emit('trackStarted', '111111111111111111', { title: 'Şarkı A', uri: 'https://youtu.be/a' });
     assert.equal(context.stats.snapshot().oturum.songsPlayed, 0, 'not counted the moment it starts');
     await new Promise((resolve) => setTimeout(resolve, 30));
     const counters = context.stats.snapshot().oturum;
-    assert.equal(counters.commandsUsed, 1, 'unknown commands are not counted');
+    assert.equal(counters.commandsUsed, 3, 'unknown commands are not counted');
+    assert.deepEqual(counters.commands, { play: 1, seek: 1, liste: 1 }, '/muzik subcommands keep their old names');
     assert.equal(counters.songsPlayed, 1, 'counted once it has played (position 30 s >= 5 ms)');
     writer.start();
     writer.stop();

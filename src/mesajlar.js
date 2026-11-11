@@ -36,6 +36,7 @@ export const etiketler = {
   zamanBirimleri: { gun: 'gün', saat: 'saat', dakika: 'dakika' }, // /stats çalışma süresi
   bilinmeyenParca: 'Bilinmeyen parça',
   bilinmeyenSanatci: 'Bilinmeyen sanatçı',
+  otomatikCalma: '🤖 Otomatik çalma', // "İsteyen" yerine, otomatik çalmanın eklediği şarkılarda
 };
 
 // --- Ses kanalı kontrolleri ----------------------------------------------
@@ -80,11 +81,33 @@ export const muzik = {
   baglantiyaIzinYok: 'Bu bağlantıya izin verilmiyor.',
   sunucuIsleyemedi: 'Müzik sunucusu isteği işleyemedi. Biraz sonra tekrar deneyin.',
   kaynakDesteklenmiyor: (kaynak) =>
-    `Bu kaynak (${kaynak}) şimdilik desteklenmiyor; YouTube ve Spotify bağlantıları ya da şarkı adı deneyin.`,
+    `Bu kaynak (${kaynak}) şimdilik desteklenmiyor; YouTube, Spotify, SoundCloud ya da doğrudan ses dosyası bağlantısı veya şarkı adı deneyin.`,
   youtubeEslesmesiYok: "Bu parçanın YouTube'da karşılığı bulunamadı.",
   sesBaglanamadi: 'Ses kanalına bağlanılamadı. Birkaç saniye sonra tekrar deneyin.',
   ffmpegYok: 'ffmpeg bulunamadı; bot sahibinin ffmpeg kurması gerekiyor (README > Gerekenler).',
   kaynakKesildi: 'Ses akışı beklenmedik biçimde kesildi.',
+  oncekiYok: 'Geri dönülecek önceki bir şarkı yok.',
+  kayitliCozulemedi: 'Kayıtlı şarkıların hiçbiri şu an yüklenemedi (silinmiş ya da kullanılamıyor olabilir).',
+  listeYukleniyor: 'Bu sunucuda şu an bir liste yükleniyor; bitince tekrar deneyin.',
+  // Geçiş (crossfade), SoundCloud, doğrudan bağlantılar ve canlı yayınlar
+  crossfadeAraligi: (en, enFazla) => `Geçiş süresi ${en} ile ${enFazla} saniye arasında olmalı (0 = kapalı).`,
+  youtubeCanliDesteklenmiyor:
+    "YouTube canlı yayınları şu an çalınamıyor: Lavalink'in YouTube eklentisi canlı yayın akışı vermiyor (README > Bilinen sınırlar).",
+  canliYayinKoptu: 'Canlı yayının bağlantısı koptu ve yeniden kurulamadı.',
+  soundcloudBulunamadi: 'Bu SoundCloud bağlantısı bulunamadı (silinmiş ya da gizli olabilir).',
+  soundcloudEngelli: 'Bu SoundCloud parçası bölgenizde ya da sahibi tarafından engelli.',
+  soundcloudOnizleme:
+    'Bu SoundCloud parçasının yalnız 30 saniyelik önizlemesi var (SoundCloud Go+), tamamı çalınamıyor.',
+  soundcloudUlasilamadi: "SoundCloud'a şu an ulaşılamıyor. Biraz sonra tekrar deneyin.",
+  sesDosyasiDegil: 'Bu bağlantı çalınabilir bir ses dosyası değil (mp3, ogg, m4a, wav, flac ya da opus olmalı).',
+  dosyaCokBuyuk: (mb) => `Ses dosyası çok büyük (en fazla ${mb} MB).`,
+  dosyaCokUzun: (saat) => `Ses dosyası çok uzun (en fazla ${saat} saat).`,
+  baglantiAcilamadi: (durum) =>
+    durum ? `Bağlantı açılamadı (sunucu ${durum} yanıtı verdi).` : 'Bağlantı açılamadı. Adresi kontrol edin.',
+  baglantiZamanAsimi: 'Bağlantı çok yavaş yanıt verdi (zaman aşımı).',
+  cokFazlaBaglanti: (saniye) =>
+    `Kısa sürede çok fazla bağlantı (SoundCloud ya da ses dosyası) açıldı; ${saniye} saniye sonra tekrar deneyin.`,
+  soundcloudYogun: 'SoundCloud şu an çok fazla istek aldığını söylüyor. Biraz sonra tekrar deneyin.',
 };
 
 // --- Bir parça yüklenemeyince ya da çalınamayınca ------------------------
@@ -115,6 +138,9 @@ export const duyurular = {
     `⚠️ Müzik sunucusu geri geldi ama ${sarki} kaldığı yerden sürdürülemedi; sıradakine geçiyorum.`,
   kurtarilamadiBekliyorum:
     '⚠️ Müzik sunucusu geri gelmedi. 24/7 açık olduğu için kanalda kalıyorum; sunucu açılınca `/play` ile devam edebilirsiniz.',
+  otomatikCalmadan: '🤖 Kuyruk bittiği için otomatik çalma ekledi (kapatmak için `/muzik autoplay`).',
+  otomatikCalmaDurdu: (sayi) =>
+    `⚠️ Otomatik çalmanın seçtiği ${sayi} şarkı üst üste çalınamadı; bu kuyruk için otomatik çalmayı durdurdum. Yeni bir şarkı eklerseniz yeniden devreye girer.`,
   kurtarilamadiAyrildim:
     '⚠️ Müzik sunucusu geri gelmedi. Kanaldan ayrıldım; sunucu açılınca `/play` ile yeniden başlatabilirsiniz.',
 };
@@ -130,6 +156,22 @@ export const ekleme = {
   notBasligi: 'Not',
   sinirYuzundenEklenmedi: (sayi) => `Kuyruk sınırı yüzünden ${sayi} parça eklenmedi.`,
   desteklenmeyenAtlandi: (sayi) => `${sayi} parça şimdilik desteklenmeyen bir kaynaktan olduğu için eklenmedi.`,
+  cozulemedi: (sayi) => `${sayi} kayıtlı parça artık yüklenemediği için eklenmedi.`,
+};
+
+// --- "Şimdi çalıyor" mesajındaki kontrol düğmeleri -------------------------
+export const kontrol = {
+  dugmeler: {
+    previous: 'Önceki',
+    pause: 'Duraklat',
+    resume: 'Devam',
+    skip: 'Atla',
+    stop: 'Durdur',
+    loop: 'Döngü',
+    shuffle: 'Karıştır',
+  },
+  durum: (tekrar, duraklatildi) => `Tekrar: ${tekrar}${duraklatildi ? ' • ⏸️ Duraklatıldı' : ''}`,
+  eskiPanel: 'Bu düğmeler artık geçerli değil; en son "Şimdi çalıyor" mesajını kullanın.',
 };
 
 // --- Şarkı seçme listesi (/play şarkı adıyla ve /search) -----------------
@@ -181,6 +223,14 @@ export const panel = {
 //  diğerleri  : komutun cevap olarak yazdıkları
 // =====================================================================
 export const komutlar = {
+  autoplay: {
+    aciklama: 'Kuyruk bitince benzer şarkılar çalmayı açar/kapatır (bu sunucuda kalıcı)',
+    secenekler: { durum: 'Açık ya da kapalı (boş bırakılırsa tersine çevrilir)' },
+    acildi: '🤖 Otomatik çalma **açıldı**. Kuyruk bitince son şarkıya benzer bir şarkı eklenecek.',
+    kapandi: '🤖 Otomatik çalma **kapatıldı**.',
+    kaydedilemedi:
+      'Ayar kaydedilemedi (data/sunucular.json yazılamadı; dosya başka bir programda açık olabilir). Biraz sonra tekrar deneyin.',
+  },
   bassboost: {
     aciklama: 'Bas güçlendirme seviyesini ayarlar',
     secenekler: { seviye: 'Bas seviyesi' },
@@ -207,6 +257,15 @@ export const komutlar = {
     rolYok: '🎧 Bu sunucuda DJ rolü ayarlı değil; herkes müziği kontrol edebilir. Ayarlamak için `/dj rol:@Rol`.',
     kaydedilemedi:
       'DJ ayarı kaydedilemedi (data/sunucular.json yazılamadı; dosya başka bir programda açık olabilir). Ayar değişmedi, biraz sonra tekrar deneyin.',
+  },
+  gecmis: {
+    aciklama: 'Son çalınan 20 şarkıyı gösterir; menüden seçtiğinizi yeniden kuyruğa ekler',
+    secenekler: { sayfa: 'Gösterilecek sayfa' },
+    baslik: '🕘 Son çalınanlar',
+    bos: 'Bu sunucuda henüz çalınmış bir şarkı yok.',
+    altBilgi: (sayfa, sayfaSayisi) => `Sayfa ${sayfa}/${sayfaSayisi} • Yeniden eklemek için menüden seçin`,
+    menuYazisi: 'Kuyruğa yeniden eklenecek şarkıyı seçin',
+    sadeceYazan: 'Bu listeyi yalnızca komutu kullanan kişi kullanabilir.',
   },
   grab: {
     aciklama: 'Çalan şarkıyı size özel mesaj (DM) olarak gönderir',
@@ -243,11 +302,52 @@ export const komutlar = {
     acildi: '🔁 Kuyruk tekrarı **açıldı**.',
     kapandi: '➡️ Kuyruk tekrarı **kapatıldı**.',
   },
+  liste: {
+    aciklama: 'Sunucuya kayıtlı çalma listeleri: kaydet, çal, ekle, göster, sil',
+    altKomutlar: {
+      kaydet: 'Çalan şarkıyı ve kuyruğu yeni bir liste olarak kaydeder',
+      çal: 'Kayıtlı bir listeyi kuyruğa ekler',
+      ekle: 'Çalan şarkıyı bir listeye ekler (liste yoksa oluşturur)',
+      göster: 'Kayıtlı listeleri ya da bir listenin şarkılarını gösterir',
+      sil: 'Bir listeyi siler (yalnız listeyi oluşturan ya da sunucu yöneticisi)',
+    },
+    secenekler: { ad: 'Listenin adı (harf, rakam, boşluk, - ve _; en fazla 32 karakter)' },
+    adGecersiz: (enFazla) => `Liste adı 1-${enFazla} karakter olmalı ve yalnız harf, rakam, boşluk, - ve _ içermeli.`,
+    adAyrilmis: (ad) => `"${ad}" adı kullanılamaz (botun iç işleri için ayrılmış). Başka bir ad seçin.`,
+    yok: (ad) => `"${ad}" adında bir liste yok. Kayıtlı listeler için \`/muzik liste göster\`.`,
+    zatenVar: (ad) =>
+      `"${ad}" adında bir liste zaten var. Şarkı eklemek için \`/muzik liste ekle\`, yeniden kaydetmek için önce \`/muzik liste sil\`.`,
+    cokFazlaListe: (enFazla) => `Bu sunucuda en fazla ${enFazla} liste olabilir. Önce bir listeyi silin.`,
+    listeDolu: (ad, enFazla) => `"${ad}" listesi dolu (en fazla ${enFazla} şarkı).`,
+    kaydedilecekYok: 'Kaydedilecek şarkı yok: çalan şarkı ya da kuyrukta şarkı olmalı.',
+    kaydedildi: (ad, sayi) => `💾 "${ad}" listesi ${sayi} şarkıyla kaydedildi.`,
+    sinirdanKesildi: (sayi) => ` (${sayi} şarkı sınır yüzünden kaydedilmedi)`,
+    eklendi: (sarki, ad, sayi) => `💾 ${sarki} "${ad}" listesine eklendi (${sayi} şarkı).`,
+    zatenListede: (sarki, ad) => `${sarki} zaten "${ad}" listesinde.`,
+    silindi: (ad) => `🗑️ "${ad}" listesi silindi.`,
+    silmeYetkisiYok: 'Bu listeyi yalnızca onu oluşturan kişi ya da "Sunucuyu Yönet" izni olanlar silebilir.',
+    bos: 'Bu sunucuda kayıtlı liste yok. Oluşturmak için `/muzik liste kaydet ad:<ad>`.',
+    listelerBasligi: (sayi, enFazla) => `📚 Kayıtlı listeler (${sayi}/${enFazla})`,
+    listeSatiri: (ad, sayi, sahipId) => `**${ad}** — ${sayi} şarkı • <@${sahipId}>`,
+    listeBasligi: (ad) => `📃 ${ad}`,
+    altBilgi: (sayfa, sayfaSayisi) => `Sayfa ${sayfa}/${sayfaSayisi}`,
+    listeAltBilgi: (sayfa, sayfaSayisi, sayi, toplam) =>
+      `Sayfa ${sayfa}/${sayfaSayisi} • ${sayi} şarkı • Toplam ${toplam}`,
+    listeBos: '_Bu listede şarkı yok._',
+    ilerleme: (eklenen, toplam) => `${eklenen}/${toplam} eklendi, kalanlar yükleniyor…`,
+    bitti: (eklenen, toplam) => `${eklenen}/${toplam} eklendi.`,
+    yarimKaldi: (eklenen, toplam) => `${eklenen}/${toplam} eklendi; yükleme durduruldu.`,
+    kaydedilemedi:
+      'Liste kaydedilemedi (data/listeler.json yazılamadı; dosya başka bir programda açık olabilir). Biraz sonra tekrar deneyin.',
+  },
   lyrics: {
     aciklama: 'Çalan şarkının (ya da yazdığınız şarkının) sözlerini gösterir',
     secenekler: { şarkı: 'Boş bırakılırsa çalan şarkı kullanılır' },
     kaynak: (kaynak) => `Kaynak: ${kaynak}`,
     kaynaksiz: 'Şarkı sözleri',
+  },
+  muzik: {
+    aciklama: 'Diğer müzik komutları: arama, döngü, ses, listeler, geçmiş...',
   },
   move: {
     aciklama: 'Kuyruktaki bir şarkının sırasını değiştirir',
@@ -278,6 +378,10 @@ export const komutlar = {
     secenekler: { sıra: 'Başa alınacak şarkının kuyruktaki sırası (/queue ile görebilirsiniz)' },
     tamam: (sarki) => `⏫ ${sarki} sıranın başına alındı; sıradaki şarkı bu.`,
     zatenBasta: (sarki) => `⏫ ${sarki} zaten sıradaki şarkı.`,
+  },
+  previous: {
+    aciklama: 'Önceki şarkıyı yeniden çalar (çalan şarkı kuyruğun başına döner)',
+    tamam: (sarki) => `⏮️ Önceki şarkı çalıyor: ${sarki}`,
   },
   queue: {
     aciklama: 'Şarkı kuyruğunu sayfa sayfa gösterir',
@@ -351,6 +455,14 @@ export const komutlar = {
   stop: {
     aciklama: 'Müziği durdurur, kuyruğu temizler ve ses kanalından ayrılır',
     tamam: '⏹️ Müzik durduruldu ve kanaldan ayrıldım.',
+  },
+  crossfade: {
+    aciklama: 'Şarkılar arası geçiş süresini gösterir ya da değiştirir',
+    secenekler: { saniye: 'Geçiş süresi, saniye (0-12; 0 = kapalı)' },
+    simdiki: (saniye) =>
+      saniye > 0 ? `🔀 Şu anki geçiş süresi: **${saniye}** saniye` : '🔀 Şarkılar arası geçiş kapalı.',
+    ayarlandi: (saniye) => `🔀 Şarkılar arası geçiş **${saniye}** saniye yapıldı.`,
+    kapatildi: '🔀 Şarkılar arası geçiş kapatıldı.',
   },
   volume: {
     aciklama: 'Ses seviyesini gösterir ya da değiştirir',

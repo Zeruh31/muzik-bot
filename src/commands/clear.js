@@ -2,6 +2,9 @@
 import { komutlar } from '../mesajlar.js';
 import { guildCommand, replySuccess, requireSameVoice } from './_helpers.js';
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('clear');
 
 export async function execute(interaction, { music }) {

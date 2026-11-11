@@ -19,7 +19,11 @@ export function ownerIdsOf(application) {
   return [...ids].filter(Boolean);
 }
 
-/** Creates isOwner(userId) → Promise<boolean>. The application is fetched lazily and cached. */
+/**
+ * Creates isOwner(userId) → Promise<boolean>. The application is fetched lazily and cached.
+ * isOwner.ids() → Promise<string[]> gives the owner ids themselves (the desktop app records the owner as
+ * the setter of role settings it makes; src/ozellikler/_masaustu/istekler.js).
+ */
 export function createOwnerCheck({ client, overrideIds = [], logger }) {
   let cached = null;
   let cachedAt = 0;
@@ -37,5 +41,7 @@ export function createOwnerCheck({ client, overrideIds = [], logger }) {
     return cached;
   }
 
-  return async (userId) => (await ownerIds()).includes(userId);
+  const isOwner = async (userId) => (await ownerIds()).includes(userId);
+  isOwner.ids = async () => [...(await ownerIds())];
+  return isOwner;
 }

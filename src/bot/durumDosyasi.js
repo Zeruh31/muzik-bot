@@ -246,9 +246,9 @@ export function attachStatusFile(context, { file, fs, intervalMs, minGapMs, minP
   client.on(Events.GuildCreate, () => writer.poke());
   client.on(Events.GuildDelete, () => writer.poke());
   client.on(Events.InteractionCreate, (interaction) => {
-    if (interaction.isChatInputCommand?.() && commands?.has(interaction.commandName)) {
-      stats?.recordCommand(interaction.commandName);
-    }
+    const command = interaction.isChatInputCommand?.() ? commands?.get(interaction.commandName) : null;
+    // "/muzik seek" is counted as "seek", so the counters go on from before the commands moved.
+    if (command) stats?.recordCommand(command.statName?.(interaction) ?? interaction.commandName);
   });
   return writer;
 }

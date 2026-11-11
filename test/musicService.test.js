@@ -312,11 +312,10 @@ describe('MusicService', () => {
 
   it('refuses tracks from sources the bot cannot stream before queueing them', async () => {
     const service = serviceWith(null);
-    const soundcloud = track('sc', 180_000, { sourceName: 'soundcloud' });
+    const soundcloud = track('bc', 180_000, { sourceName: 'bandcamp' });
     await assert.rejects(
       service.enqueue({ guildId: 'g', voiceChannelId: 'v1', tracks: [soundcloud] }),
-      (e) =>
-        e.code === 'SOURCE_UNSUPPORTED' && /soundcloud/.test(e.message) && /şimdilik desteklenmiyor/.test(e.message),
+      (e) => e.code === 'SOURCE_UNSUPPORTED' && /bandcamp/.test(e.message) && /şimdilik desteklenmiyor/.test(e.message),
     );
     assert.equal(service.getPlayer('g'), null, 'no player was created');
     // In a playlist the unsupported ones are left out and counted.

@@ -5,6 +5,7 @@ import { DiscordjsErrorCodes } from 'discord.js';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config.js';
 import { createLogger } from './logger.js';
+import { startWithIntentFallback } from './ozellikler/_intentler.js';
 import { startPanel } from './panel/index.js';
 
 const logger = createLogger('bot');
@@ -30,7 +31,10 @@ async function closeAll(context, panel) {
   context.presence?.stop();
   // Last status write ("running": false) and pending counters, while the guild data is still there.
   context.status?.stop();
+  context.masaustu?.stop(); // desktop settings requests (src/ozellikler/_masaustu)
   context.stats?.close();
+  context.history?.close();
+  context.ozellikler?.kapat(); // scheduler and panel timers, module listeners
   for (const guildId of context.music.activeGuildIds()) {
     await context.music
       .getPlayer(guildId)
@@ -53,7 +57,7 @@ function explainLoginError(error) {
     return 'Discord token\'ı geçersiz. Developer Portal > Bot > "Reset Token" ile yeni token alıp .env içindeki DISCORD_TOKEN\'a yapıştırın.';
   }
   if (/disallowed intents/i.test(text)) {
-    return "Discord gerekli izinleri (intent) reddetti. Developer Portal > Bot sayfasındaki ayarları README'ye göre kontrol edin.";
+    return "Discord gerekli izinleri (intent) reddetti. Developer Portal > Bot > Privileged Gateway Intents bölümünü README'nin 3. adımına göre kontrol edin.";
   }
   if (
     /ENOTFOUND|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|UND_ERR_CONNECT_TIMEOUT|fetch failed|Connect Timeout|socket hang up/i.test(
@@ -74,32 +78,41 @@ async function main() {
     throw error;
   }
 
-  const context = await createApp({ config, logger });
-  started = { context };
-  const { client } = context;
-  // Web panel (phase 2). Does nothing when PANEL_ENABLED is not true; never blocks the bot.
-  const panel = await startPanel(context);
-  started.panel = panel;
-
   let shuttingDown = false;
   const shutdown = async (signal) => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`${signal} alındı, kapatılıyor...`);
-    await closeAll(context, panel);
+    await closeAll(started?.context, started?.panel);
     exitWhenIdle(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  logger.info("Discord'a bağlanılıyor...");
   try {
-    await client.login(config.discord.token);
+    // When Discord refuses a privileged intent (Developer Portal switch off), the bot starts again
+    // without it and only the features that need it are off (src/ozellikler/_intentler.js).
+    await startWithIntentFallback({
+      start: async ({ allowPrivileged }) => {
+        const context = await createApp({ config, logger, allowPrivilegedIntents: allowPrivileged });
+        started = { context };
+        // Web panel (phase 2). Does nothing when PANEL_ENABLED is not true; never blocks the bot.
+        started.panel = await startPanel(context);
+        return started;
+      },
+      login: async ({ context }) => {
+        logger.info("Discord'a bağlanılıyor...");
+        await context.client.login(config.discord.token);
+      },
+      stop: ({ context, panel }) => closeAll(context, panel),
+      planOf: ({ context }) => context.ozellikler.intentPlan,
+      logger,
+    });
   } catch (error) {
     const explanation = explainLoginError(error);
     if (!explanation) throw error;
     console.error(`\nHATA: ${explanation}\n`);
-    await closeAll(context, panel);
+    await closeAll(started?.context, started?.panel);
     exitWhenIdle(1);
   }
 }

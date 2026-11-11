@@ -7,6 +7,9 @@ import { describe, guildCommand } from './_helpers.js';
 const M = komutlar.lyrics;
 const MAX_TEXT = 4000; // Discord allows 4096 characters in an embed description
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('lyrics').addStringOption((option) =>
   describe(option, 'lyrics', 'şarkı').setMaxLength(200),
 );

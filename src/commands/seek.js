@@ -4,6 +4,9 @@ import { ErrorCodes, MusicError } from '../music/errors.js';
 import { formatDuration, parseTime } from '../util/format.js';
 import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpers.js';
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('seek').addStringOption((option) =>
   describe(option, 'seek', 'zaman').setRequired(true).setMaxLength(20),
 );

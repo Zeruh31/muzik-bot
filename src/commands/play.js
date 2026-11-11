@@ -10,12 +10,19 @@ export const data = guildCommand('play').addStringOption((option) =>
 );
 
 export async function execute(interaction, context) {
+  await playQuery(interaction, context, interaction.options.getString('şarkı', true));
+}
+
+/**
+ * The whole /play flow for a typed query; also used by the control center's "Şarkı ekle" form.
+ * Works for any interaction that can reply (slash command, modal submit).
+ */
+export async function playQuery(interaction, context, query) {
   const { music, config } = context;
   const channel = requireJoinableVoice(interaction, music);
   await interaction.deferReply();
 
-  const query = interaction.options.getString('şarkı', true);
-  const resolved = await music.resolve(query, interaction.user);
+  const resolved = await music.resolve(query, interaction.user, { guildId: interaction.guildId });
   if (resolved.kind === 'search' && config.music.playShowChoices && resolved.tracks.length > 1) {
     await pickAndPlay(interaction, context, {
       tracks: resolved.tracks,

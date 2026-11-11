@@ -1012,6 +1012,7 @@ function renderServers() {
   }
   if (!all.some((s) => s.id === serverView.selected)) serverView.selected = list[0]?.id ?? null;
   renderServerDetail();
+  syncServerSettings();
 }
 
 function detailRow(label, value) {
@@ -1091,6 +1092,327 @@ $('#server-sort').addEventListener('change', (event) => {
   serverView.sort = event.target.value;
   renderServers();
 });
+
+// ---- server settings ("Ayarlar") ----------------------------------------------------------------
+// The fields come from the bot's own schema (data/ayar-semasi.json), channels and roles from
+// data/sunucu-yapisi.json, both checked by the main process. Names are user data: textContent only.
+// Saving sends { guildId, modul, alan, deger } to the main process, which checks it again and hands it
+// to the bot; the bot applies it with the same rules as /ayar and answers in Turkish.
+
+const SS = window.serverSettings;
+const settingsView = {
+  guildId: null,
+  data: null,
+  live: null,
+  loading: 0,
+  edits: new Map(), // "modul.alan" -> value changed here but not saved yet
+  status: new Map(), // "modul.alan" -> { kind, text } of the last save
+  saving: new Set(),
+};
+
+const settingKey = (module, field) => `${module.ad}.${field.anahtar}`;
+const isList = (field) => field.tur === 'kanal-listesi' || field.tur === 'rol-listesi';
+/** A typed value that does not pass the checks yet (kept so the Save button stays off). */
+const isInvalidEdit = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+async function loadServerSettings(guildId) {
+  const ticket = ++settingsView.loading;
+  const data = guildId ? await api.serverSettings(guildId) : null;
+  if (ticket !== settingsView.loading || settingsView.guildId !== guildId) return; // another server meanwhile
+  settingsView.data = data;
+  renderServerSettings();
+}
+
+/** Called whenever the server list is drawn: reloads only when the server or the bot's state changed. */
+function syncServerSettings() {
+  const live = Boolean(botData.status && !botData.stale);
+  if (settingsView.guildId !== serverView.selected) {
+    settingsView.guildId = serverView.selected;
+    settingsView.data = null;
+    settingsView.edits.clear();
+    settingsView.status.clear();
+    settingsView.live = live;
+    renderServerSettings();
+    loadServerSettings(serverView.selected);
+  } else if (settingsView.live !== live) {
+    settingsView.live = live;
+    renderServerSettings();
+  }
+}
+
+function currentValue(module, field) {
+  const key = settingKey(module, field);
+  const view = settingsView.data?.gorunum;
+  if (isList(field) || field.tur === 'ozel') return view?.listeler?.[key] ?? [];
+  const value = view?.degerler?.[key];
+  return value === undefined ? (field.varsayilan ?? null) : value;
+}
+
+function editedValue(module, field) {
+  const key = settingKey(module, field);
+  return settingsView.edits.has(key) ? settingsView.edits.get(key) : currentValue(module, field);
+}
+
+function pickerSelect(id, options, value, disabled, onChange) {
+  const select = h('select', { class: 'input', id, disabled });
+  select.append(h('option', { value: '', text: '(ayarlanmadı)' }));
+  if (value && !options.some((o) => o.id === value)) select.append(h('option', { value, text: '(silinmiş öğe)' }));
+  for (const o of options) {
+    select.append(
+      h('option', {
+        value: o.id,
+        text: o.reason ? `${o.label} (seçilemez: ${o.reason})` : o.warning ? `${o.label} ⚠` : o.label,
+        disabled: o.disabled,
+      }),
+    );
+  }
+  select.value = value ?? '';
+  select.addEventListener('change', () => onChange(select.value || null));
+  return select;
+}
+
+function listControl(id, field, guild, items, disabled, onChange) {
+  const choices =
+    field.tur === 'kanal-listesi' ? SS.channelChoices(guild, field.kanalTurleri) : SS.roleChoices(guild, {});
+  const chips = h(
+    'div',
+    { class: 'chip-list' },
+    items.length ? null : h('span', { class: 'muted small', text: 'Liste boş.' }),
+    ...items.map((itemId) =>
+      h(
+        'span',
+        { class: 'chip' },
+        h('span', { text: SS.nameOf(guild, itemId) }),
+        h('button', {
+          class: 'chip-x',
+          type: 'button',
+          title: 'Listeden çıkar',
+          'aria-label': `${SS.nameOf(guild, itemId)}: listeden çıkar`,
+          text: '×',
+          disabled,
+          onclick: () => onChange(items.filter((x) => x !== itemId)),
+        }),
+      ),
+    ),
+  );
+  const full = items.length >= field.enFazla;
+  const add = h('select', { class: 'input', id, disabled: disabled || full });
+  add.append(h('option', { value: '', text: full ? 'Liste dolu' : '+ Ekle...' }));
+  for (const o of choices) {
+    if (items.includes(o.id)) continue;
+    add.append(
+      h('option', { value: o.id, text: o.reason ? `${o.label} (${o.reason})` : o.label, disabled: o.disabled }),
+    );
+  }
+  add.addEventListener('change', () => add.value && onChange([...items, add.value]));
+  return h('div', { class: 'list-control' }, chips, add);
+}
+
+function fieldRow(module, field) {
+  const key = settingKey(module, field);
+  const id = `set-${key.replace(/[^a-z0-9-]/g, '-')}`;
+  const guild = settingsView.data?.yapi;
+  const current = currentValue(module, field);
+  const value = editedValue(module, field);
+  const blocked = !settingsView.live || Boolean(settingsView.data?.saltOkunur) || Boolean(module.kapali);
+  const error = h('div', { class: 'field-error' });
+  const statusLine = h('div', { class: 'set-status', role: 'status' });
+  const save = h('button', { class: 'btn primary small', type: 'button', text: 'Kaydet' });
+  const reset = h('button', { class: 'btn ghost small', type: 'button', text: 'Varsayılana dön' });
+  let row = null;
+
+  function refresh() {
+    const busy = settingsView.saving.has(key);
+    const changed = settingsView.edits.has(key);
+    // "Kaydet" only shows up once something was changed here.
+    save.classList.toggle('hidden', !changed && !busy);
+    save.disabled = blocked || busy || !changed || isInvalidEdit(settingsView.edits.get(key));
+    reset.disabled = blocked || busy;
+    const status = settingsView.status.get(key);
+    statusLine.textContent = status?.text ?? '';
+    statusLine.className = `set-status ${status?.kind ?? ''}`;
+  }
+  const setEdit = (next, redraw = true) => {
+    if (SS.sameValue(next, current)) settingsView.edits.delete(key);
+    else settingsView.edits.set(key, next);
+    settingsView.status.delete(key);
+    if (redraw) row.replaceWith(fieldRow(module, field));
+    else refresh();
+  };
+
+  let control;
+  const notes = [];
+  if (field.yalnizDiscord) {
+    const lines = Array.isArray(current) ? current : [];
+    control = h(
+      'div',
+      { class: 'readonly-list' },
+      lines.length
+        ? lines.map((line) => h('div', { class: 'small', text: line }))
+        : h('div', { class: 'muted small', text: 'Henüz yok.' }),
+    );
+    notes.push(h('div', { class: 'hint', text: `Bu ayarı Discord'da ${field.yalnizDiscord} ile yapın.` }));
+  } else if (field.tur === 'bayrak') {
+    const input = h('input', { type: 'checkbox', id, disabled: blocked });
+    input.checked = value === true;
+    input.addEventListener('change', () => setEdit(input.checked));
+    control = h('label', { class: 'switch' }, input, h('span'));
+  } else if (field.tur === 'kanal') {
+    const choices = SS.channelChoices(guild, field.kanalTurleri);
+    control = pickerSelect(id, choices, value, blocked, (next) => setEdit(next));
+    const warning = choices.find((c) => c.id === value)?.warning;
+    if (warning) notes.push(h('div', { class: 'field-warn', text: `⚠ ${warning}` }));
+  } else if (field.tur === 'rol') {
+    const choices = SS.roleChoices(guild, { verilebilir: field.verilebilir });
+    control = pickerSelect(id, choices, value, blocked, (next) => setEdit(next));
+    const warning = settingsView.data?.gorunum?.uyarilar?.[key];
+    if (warning && !settingsView.edits.has(key))
+      notes.push(h('div', { class: 'field-warn', text: `⚠ Şu an verilmiyor: ${warning}` }));
+  } else if (isList(field)) {
+    control = listControl(id, field, guild, Array.isArray(value) ? value : [], blocked, (next) => setEdit(next));
+  } else {
+    const long = field.tur === 'metin' && field.enFazla > 120;
+    const input = h(long ? 'textarea' : 'input', {
+      class: 'input',
+      id,
+      type: long ? undefined : field.tur === 'sayi' ? 'number' : 'text',
+      min: field.tur === 'sayi' ? field.enAz : undefined,
+      max: field.tur === 'sayi' ? field.enFazla : undefined,
+      maxlength: field.tur === 'metin' ? field.enFazla : undefined,
+      rows: long ? 3 : undefined,
+      spellcheck: 'false',
+      autocomplete: 'off',
+      disabled: blocked,
+    });
+    input.value = isInvalidEdit(value) ? value.metin : value === null || value === undefined ? '' : String(value);
+    input.addEventListener('input', () => {
+      const parsed = SS.parseInput(field, input.value);
+      input.classList.toggle('invalid', !parsed.ok);
+      error.textContent = parsed.ok ? '' : parsed.error;
+      setEdit(parsed.ok ? parsed.value : { metin: input.value }, false);
+    });
+    control = input;
+  }
+
+  async function send(next) {
+    settingsView.saving.add(key);
+    settingsView.status.set(key, { kind: 'busy', text: 'Kaydediliyor...' });
+    refresh();
+    let result;
+    try {
+      result = await api.saveServerSetting({
+        guildId: settingsView.guildId,
+        modul: module.ad,
+        alan: field.anahtar,
+        deger: next,
+      });
+    } catch (e) {
+      result = { ok: false, hata: `Kaydedilemedi: ${e.message}` };
+    }
+    settingsView.saving.delete(key);
+    if (result.ok) {
+      settingsView.edits.delete(key);
+      settingsView.status.set(key, { kind: 'ok', text: 'Kaydedildi; bot ayarı uyguladı.' });
+    } else {
+      settingsView.status.set(key, { kind: 'bad', text: result.hata ?? 'Kaydedilemedi.' });
+    }
+    await loadServerSettings(settingsView.guildId);
+  }
+  save.addEventListener('click', () => send(settingsView.edits.get(key)));
+  reset.addEventListener('click', () => send(isList(field) ? [] : null));
+
+  const editable = !field.yalnizDiscord;
+  const isSet = settingsView.data?.gorunum?.ayarli?.includes(key);
+  row = h(
+    'div',
+    { class: 'set-row', dataset: { key } },
+    h(
+      'label',
+      { class: 'set-label', for: editable ? id : undefined },
+      h('div', { class: 'field-label', text: field.etiket }),
+      h('div', { class: 'field-key', text: key }),
+    ),
+    h(
+      'div',
+      { class: 'field-control' },
+      h('div', { class: 'field-input-row' }, control),
+      field.aciklama && field.aciklama !== field.etiket
+        ? h('div', { class: 'field-help', text: field.aciklama })
+        : null,
+      ...notes,
+      error,
+      editable ? h('div', { class: 'set-actions' }, save, isSet ? reset : null, statusLine) : null,
+    ),
+  );
+  refresh();
+  return row;
+}
+
+function moduleCard(module) {
+  return h(
+    'article',
+    { class: 'card set-card', dataset: { modul: module.ad } },
+    h('div', { class: 'set-card-title', text: `${module.emoji ? `${module.emoji} ` : ''}${module.baslik}` }),
+    module.kapali ? h('div', { class: 'alert warn', text: module.kapali }) : null,
+    ...module.alanlar.map((field) => fieldRow(module, field)),
+  );
+}
+
+function renderServerSettings() {
+  const box = $('#server-settings');
+  if (!settingsView.guildId) {
+    box.replaceChildren();
+    return;
+  }
+  const data = settingsView.data;
+  const head = h(
+    'header',
+    { class: 'settings-head' },
+    h('h2', { text: 'Ayarlar' }),
+    h('p', {
+      class: 'muted small',
+      text: "Discord'daki /ayar ile aynı ayarlar. Bot her değişikliği /ayar ile aynı kurallarla denetler.",
+    }),
+  );
+  if (!data) {
+    box.replaceChildren(head, h('div', { class: 'muted', text: 'Yükleniyor...' }));
+    return;
+  }
+  if (!data.sema || !data.yapi) {
+    box.replaceChildren(
+      head,
+      h('div', {
+        class: 'alert info',
+        text: "Bu sunucunun ayar bilgileri henüz yok. Bot açılıp Discord'a bağlanınca kanal ve rol listeleri gelir.",
+      }),
+    );
+    return;
+  }
+  const notes = [];
+  if (!settingsView.live)
+    notes.push(
+      h('div', { class: 'alert warn', id: 'settings-bot-off', text: 'Bot kapalı; ayarlar bot açıkken uygulanır.' }),
+    );
+  if (data.saltOkunur)
+    notes.push(
+      h('div', {
+        class: 'alert warn',
+        text: 'Ayarlar şu an değiştirilemiyor: data/ozellikler.json daha yeni bir bot sürümüne ait. Botu güncelleyin.',
+      }),
+    );
+  box.replaceChildren(
+    head,
+    ...notes,
+    ...SS.groupModules(data.sema).map((group) =>
+      h(
+        'section',
+        { class: 'settings-cat' },
+        h('h3', { text: group.kategori }),
+        h('div', { class: 'settings-grid' }, ...group.moduller.map(moduleCard)),
+      ),
+    ),
+  );
+}
 
 // ---- statistics ---------------------------------------------------------------------------------
 
@@ -1237,6 +1559,23 @@ function applyBotData(next) {
 
 api.on('olay:durum', renderStatus);
 api.on('olay:botDurumu', applyBotData);
+// The bot wrote new values (a save here, or /ayar in Discord): redraw, keeping what is being typed.
+api.on('olay:sunucuAyar', () => {
+  if (settingsView.guildId) loadServerSettings(settingsView.guildId);
+});
+// The bot has taken a request and is applying it (the answer is late): say so on that setting's row.
+api.on('olay:sunucuAyarDurum', ({ guildId, modul, alan, durum } = {}) => {
+  if (durum !== 'uygulaniyor' || guildId !== settingsView.guildId) return;
+  const key = `${modul}.${alan}`;
+  if (!settingsView.saving.has(key)) return;
+  const text = 'Bot ayarı uyguluyor...';
+  settingsView.status.set(key, { kind: 'busy', text });
+  const line = document.querySelector(`[data-key="${CSS.escape(key)}"] .set-status`);
+  if (line) {
+    line.textContent = text;
+    line.className = 'set-status busy';
+  }
+});
 api.on('olay:kayit', appendLogs);
 api.on('olay:youtube', () => {
   if (!$('#yt-modal').classList.contains('hidden')) renderYoutubeModal();

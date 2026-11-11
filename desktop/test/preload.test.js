@@ -98,3 +98,25 @@ test('external links: only https and the local panel', () => {
   assert.ok(!isSafeExternalUrl('https://user:pass@example.com'));
   assert.ok(!isSafeExternalUrl('not a url'));
 });
+
+test('saving a server setting sends only guildId, modul, alan and deger', async () => {
+  const { exposed, calls } = loadPreload();
+  await exposed.api.saveServerSetting({
+    guildId: '111111111111111111',
+    modul: 'karsilama',
+    alan: 'hosgeldin-kanal',
+    deger: '222222222222222222',
+    yol: 'C:\Windows\System32',
+    dosya: '../../.env',
+  });
+  await exposed.api.serverSettings(123);
+  assert.deepEqual(calls, [
+    {
+      channel: 'sunucuAyar:kaydet',
+      args: [
+        { guildId: '111111111111111111', modul: 'karsilama', alan: 'hosgeldin-kanal', deger: '222222222222222222' },
+      ],
+    },
+    { channel: 'sunucuAyar:al', args: ['123'] },
+  ]);
+});

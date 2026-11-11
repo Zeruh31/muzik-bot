@@ -117,7 +117,7 @@ describe('computePosition', () => {
 describe('audio source', () => {
   it('YouTube tracks stream their own video id', async () => {
     const result = await resolveStreamSource(track('a', { sourceName: 'youtube', identifier: 'dQw4w9WgXcQ' }), {});
-    assert.deepEqual(result, { videoId: 'dQw4w9WgXcQ', mirrored: null });
+    assert.deepEqual(result, { kind: 'youtube', videoId: 'dQw4w9WgXcQ', mirrored: null });
   });
 
   it('mirrored sources (Spotify) search YouTube by ISRC first, then by title and artist', async () => {
@@ -182,9 +182,8 @@ describe('audio source', () => {
 
   it('other sources are refused as unsupported for now', async () => {
     await assert.rejects(
-      resolveStreamSource(track('x', { sourceName: 'soundcloud', identifier: '1' }), {}),
-      (e) =>
-        e.code === 'SOURCE_UNSUPPORTED' && /soundcloud/.test(e.message) && /şimdilik desteklenmiyor/.test(e.message),
+      resolveStreamSource(track('x', { sourceName: 'bandcamp', identifier: '1' }), {}),
+      (e) => e.code === 'SOURCE_UNSUPPORTED' && /bandcamp/.test(e.message) && /şimdilik desteklenmiyor/.test(e.message),
     );
   });
 });

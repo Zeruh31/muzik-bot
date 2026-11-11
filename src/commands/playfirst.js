@@ -5,6 +5,9 @@ import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpe
 
 const M = komutlar.playfirst;
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('playfirst').addIntegerOption((option) =>
   describe(option, 'playfirst', 'sıra').setRequired(true).setMinValue(1),
 );

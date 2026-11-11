@@ -10,6 +10,7 @@ const M = komutlar.servers;
 const PAGE_SIZE = 10; // one embed field per server; Discord allows at most 25
 
 export const data = anywhereCommand('servers');
+export const kategori = 'genel';
 
 /** Builds one page of the server list (biggest servers first). */
 export function renderServerPage(guilds, page) {

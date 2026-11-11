@@ -61,6 +61,7 @@ export function addedEmbed(result) {
   const notes = [];
   if (result.skippedForLimit > 0) notes.push(ekleme.sinirYuzundenEklenmedi(result.skippedForLimit));
   if (result.skippedUnsupported > 0) notes.push(ekleme.desteklenmeyenAtlandi(result.skippedUnsupported));
+  if (result.failedToResolve > 0) notes.push(ekleme.cozulemedi(result.failedToResolve));
   if (notes.length) embed.addFields({ name: ekleme.notBasligi, value: notes.join('\n') });
   return embed;
 }

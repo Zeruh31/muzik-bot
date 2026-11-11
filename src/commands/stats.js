@@ -8,6 +8,7 @@ import { anywhereCommand } from './_helpers.js';
 const M = komutlar.stats;
 
 export const data = anywhereCommand('stats');
+export const kategori = 'genel';
 
 export async function execute(interaction, { music, startedAt, panel }) {
   const { client } = interaction;

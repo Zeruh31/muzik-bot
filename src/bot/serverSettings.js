@@ -1,4 +1,4 @@
-// Sunucu başına kalıcı ayarlar (şimdilik yalnızca DJ rolü), data/sunucular.json dosyasında.
+// Sunucu başına kalıcı ayarlar (DJ rolü, otomatik çalma, şarkılar arası geçiş), data/sunucular.json dosyasında.
 // Dosya bozulursa bot çökmez: bozuk dosyayı yedekleyip boş ayarlarla devam eder.
 // Normalde bu dosyaya dokunmana gerek yok.
 
@@ -23,7 +23,7 @@ function sleepSync(ms) {
 }
 
 /**
- * Small JSON store: { "<guildId>": { "djRoleId": "<roleId>", ...other fields } }.
+ * Small JSON store: { "<guildId>": { "djRoleId": "<roleId>", "autoplay": true, ...other fields } }.
  * Writes go to a temporary file that is then renamed, so a crash mid-write cannot leave a
  * half-written file. Memory is only updated after the file was written successfully.
  * `fs` can be replaced in tests.
@@ -67,10 +67,26 @@ export function createServerSettings({ file, logger, fs = nodeFs }) {
     }
   }
 
+  /** A guild's own entry (never something inherited from Object.prototype). */
+  function entryOf(guildId) {
+    return Object.hasOwn(data, guildId) ? data[guildId] : undefined;
+  }
+
+  /** Sets (value) or removes (null/false) one field of a guild; memory changes only after the write. */
+  function setField(guildId, key, value) {
+    const entry = { ...entryOf(guildId) };
+    if (value) entry[key] = value;
+    else delete entry[key];
+    const next = { ...data, [guildId]: entry };
+    if (Object.keys(entry).length === 0) delete next[guildId];
+    write(next);
+    data = next;
+  }
+
   return {
     /** The DJ role id of a guild, or null when none is set. */
     getDjRole(guildId) {
-      const roleId = data[guildId]?.djRoleId;
+      const roleId = entryOf(guildId)?.djRoleId;
       return typeof roleId === 'string' && SNOWFLAKE.test(roleId) ? roleId : null;
     },
 
@@ -79,13 +95,28 @@ export function createServerSettings({ file, logger, fs = nodeFs }) {
      * Throws SettingsSaveError when the file cannot be written; nothing changes then.
      */
     setDjRole(guildId, roleId) {
-      const entry = { ...data[guildId] };
-      if (roleId) entry.djRoleId = roleId;
-      else delete entry.djRoleId;
-      const next = { ...data, [guildId]: entry };
-      if (Object.keys(entry).length === 0) delete next[guildId];
-      write(next);
-      data = next;
+      setField(guildId, 'djRoleId', roleId || null);
+    },
+
+    /** Whether /autoplay is on in a guild (off by default). */
+    getAutoplay(guildId) {
+      return entryOf(guildId)?.autoplay === true;
+    },
+
+    /** Turns /autoplay on or off. Throws SettingsSaveError like setDjRole. */
+    setAutoplay(guildId, enabled) {
+      setField(guildId, 'autoplay', enabled === true);
+    },
+
+    /** Crossfade seconds of a guild (0 = off, the default); MusicService validates the range. */
+    getCrossfade(guildId) {
+      const seconds = entryOf(guildId)?.crossfade;
+      return Number.isInteger(seconds) && seconds > 0 && seconds <= 60 ? seconds : 0;
+    },
+
+    /** Sets the crossfade seconds (0 removes the field). Throws SettingsSaveError like setDjRole. */
+    setCrossfade(guildId, seconds) {
+      setField(guildId, 'crossfade', Number.isInteger(seconds) && seconds > 0 ? seconds : null);
     },
   };
 }

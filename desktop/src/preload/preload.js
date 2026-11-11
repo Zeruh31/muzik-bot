@@ -29,8 +29,18 @@ const INVOKE_CHANNELS = [
   'youtube:kapat',
   'dis:ac',
   'pano:kopyala',
+  'sunucuAyar:al',
+  'sunucuAyar:kaydet',
 ];
-const EVENT_CHANNELS = ['olay:durum', 'olay:kayit', 'olay:youtube', 'olay:indirme', 'olay:botDurumu'];
+const EVENT_CHANNELS = [
+  'olay:durum',
+  'olay:kayit',
+  'olay:youtube',
+  'olay:indirme',
+  'olay:botDurumu',
+  'olay:sunucuAyar',
+  'olay:sunucuAyarDurum',
+];
 
 function invoke(channel, ...args) {
   if (!INVOKE_CHANNELS.includes(channel)) return Promise.reject(new Error(`İzin verilmeyen kanal: ${channel}`));
@@ -72,5 +82,14 @@ contextBridge.exposeInMainWorld('muzik', {
   dismissYoutube: () => invoke('youtube:kapat'),
   openExternal: (url) => invoke('dis:ac', String(url)),
   copy: (text) => invoke('pano:kopyala', String(text)),
+  serverSettings: (guildId) => invoke('sunucuAyar:al', String(guildId)),
+  // Only these four fields reach the main process, which checks them against the bot's schema.
+  saveServerSetting: (change) =>
+    invoke('sunucuAyar:kaydet', {
+      guildId: String(change?.guildId ?? ''),
+      modul: String(change?.modul ?? ''),
+      alan: String(change?.alan ?? ''),
+      deger: change?.deger ?? null,
+    }),
   on,
 });

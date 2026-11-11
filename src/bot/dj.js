@@ -2,21 +2,25 @@
 //   - o role sahip olanlar,
 //   - "Sunucuyu Yönet" izni olanlar (sunucu yöneticileri),
 //   - botla aynı ses kanalında tek başına olan kişi
-// kullanabilir. Rol ayarlı değilse herkes kullanabilir. Web paneli de aynı listeyi kullanır.
+// kullanabilir. Rol ayarlı değilse herkes kullanabilir. Web paneli ve "Şimdi çalıyor" mesajının
+// düğmeleri de aynı listeyi kullanır.
 //
 // Bir komutu DJ'ye özel yapmak ya da serbest bırakmak için aşağıdaki listeye adını ekle/çıkar.
 
 import { PermissionFlagsBits } from 'discord.js';
 
 export const DJ_COMMANDS = new Set([
+  'autoplay',
   'bassboost',
   'clear',
+  'crossfade',
   'disconnect',
   'loop',
   'loopqueue',
   'move',
   'pause',
   'playfirst',
+  'previous',
   'remove',
   'resume',
   'seek',
@@ -56,11 +60,12 @@ export function memberRoleIds(member) {
 }
 
 /**
- * DJ check for a slash command. Returns the DJ role id that is missing, or null when allowed
- * (also when the command does not need DJ rights at all).
+ * DJ check for a slash command (or a control button, which passes the command it stands for as
+ * `commandName`). Returns the DJ role id that is missing, or null when allowed (also when the
+ * command does not need DJ rights at all).
  */
-export function missingDjRole(interaction, { settings, music }) {
-  if (!DJ_COMMANDS.has(interaction.commandName)) return null;
+export function missingDjRole(interaction, { settings, music }, commandName = interaction.commandName) {
+  if (!DJ_COMMANDS.has(commandName)) return null;
   const djRoleId = settings.getDjRole(interaction.guildId);
   if (!djRoleId || !interaction.guild) return null;
   const botChannelId =

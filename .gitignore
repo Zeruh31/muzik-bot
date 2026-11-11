@@ -35,3 +35,9 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Local tool configuration that is not part of the project (Cheat Engine MCP server whitelist)
+process_whitelist.json
+
+# Local Claude Code state (agent worktrees, settings)
+.claude/

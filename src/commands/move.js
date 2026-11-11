@@ -3,6 +3,9 @@ import { komutlar } from '../mesajlar.js';
 import { trackLink } from '../util/embeds.js';
 import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpers.js';
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('move')
   .addIntegerOption((option) => describe(option, 'move', 'parça').setRequired(true).setMinValue(1))
   .addIntegerOption((option) => describe(option, 'move', 'konum').setRequired(true).setMinValue(1));

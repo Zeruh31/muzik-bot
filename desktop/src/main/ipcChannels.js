@@ -27,8 +27,18 @@ const INVOKE_CHANNELS = Object.freeze([
   'youtube:kapat',
   'dis:ac',
   'pano:kopyala',
+  'sunucuAyar:al',
+  'sunucuAyar:kaydet',
 ]);
 
-const EVENT_CHANNELS = Object.freeze(['olay:durum', 'olay:kayit', 'olay:youtube', 'olay:indirme', 'olay:botDurumu']);
+const EVENT_CHANNELS = Object.freeze([
+  'olay:durum',
+  'olay:kayit',
+  'olay:youtube',
+  'olay:indirme',
+  'olay:botDurumu',
+  'olay:sunucuAyar',
+  'olay:sunucuAyarDurum',
+]);
 
 module.exports = { INVOKE_CHANNELS, EVENT_CHANNELS };

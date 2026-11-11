@@ -6,6 +6,9 @@ import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpe
 
 const M = komutlar.volume;
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('volume').addIntegerOption((option) =>
   describe(option, 'volume', 'seviye').setMinValue(VOLUME_MIN).setMaxValue(VOLUME_MAX),
 );

@@ -303,3 +303,62 @@ describe('GuildPlayer pipeline', () => {
     await assert.rejects(t.player.play(), (e) => e.code === 'NO_PLAYER'); // after destroy
   });
 });
+
+describe('GuildPlayer previous', () => {
+  it('plays the previous track from the start and puts the current one back in front', async () => {
+    const t = setup();
+    t.player.queue.add([track('a'), track('b'), track('c')]);
+    await t.player.play();
+    t.voice.endCurrent(213_000); // a finished, b plays
+    await settle();
+    t.voice.resources.at(-1).playbackDuration = 50_000;
+    const now = await t.player.previous();
+    assert.equal(now.info.title, 'a');
+    assert.deepEqual(
+      t.player.queue.tracks.map((x) => x.info.title),
+      ['b', 'c'],
+    );
+    assert.equal(t.seekArg(t.processes.at(-1)), null, 'a starts from 0');
+    assert.equal(t.player.position, 0);
+    const ends = t.events.filter((e) => e[0] === 'trackEnd').map((e) => [e[2].info.title, e[3].reason]);
+    assert.deepEqual(ends.at(-1), ['b', 'replaced']);
+    assert.equal(t.names().filter((n) => n === 'trackStart').length, 3);
+    assert.equal(t.processes.at(-2).killed, true, "b's pipeline was closed");
+  });
+
+  it('brings the last track back after the queue ended, and after a skip at the end', async () => {
+    const t = setup();
+    t.player.queue.add([track('a')]);
+    await t.player.play();
+    await t.player.stopPlaying(); // /skip on the last track
+    assert.equal(t.player.queue.current, null);
+    const now = await t.player.previous();
+    assert.equal(now.info.title, 'a');
+    assert.equal(t.player.playing, true);
+  });
+
+  it('does not offer a track that failed to play', async () => {
+    const t = setup();
+    t.player.queue.add([track('a')]);
+    await t.player.play();
+    t.rest.streams[0].truncated = true;
+    t.voice.endCurrent(300); // failure
+    await settle();
+    assert.ok(t.names().includes('trackError'));
+    assert.equal(await t.player.previous(), null);
+  });
+});
+
+describe('GuildPlayer quick button presses', () => {
+  it('togglePause alternates even when presses arrive together; cycleRepeatMode steps once per press', async () => {
+    const t = setup();
+    t.player.queue.add([track('a')]);
+    await t.player.play();
+    const states = await Promise.all([t.player.togglePause(), t.player.togglePause(), t.player.togglePause()]);
+    assert.deepEqual(states, [true, false, true]);
+    assert.equal(t.player.paused, true);
+    const next = (mode) => ({ off: 'track', track: 'queue', queue: 'off' })[mode];
+    const modes = await Promise.all([1, 2, 3, 4].map(() => t.player.cycleRepeatMode(next)));
+    assert.deepEqual(modes, ['track', 'queue', 'off', 'track']);
+  });
+});

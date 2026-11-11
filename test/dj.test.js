@@ -104,7 +104,8 @@ describe('DJ rule', () => {
 
   it('every command in the DJ list exists; play, search, queue and help are not in it', async () => {
     const commands = await loadCommands();
-    for (const name of DJ_COMMANDS) assert.ok(commands.has(name), name);
+    const subcommands = commands.get('muzik').subcommands;
+    for (const name of DJ_COMMANDS) assert.ok(commands.has(name) || subcommands.has(name), name);
     for (const name of ['play', 'search', 'queue', 'help', 'nowplaying', 'dj', 'servers']) {
       assert.ok(!DJ_COMMANDS.has(name), name);
     }

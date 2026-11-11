@@ -5,6 +5,9 @@ import { describe, guildCommand, replySuccess, requireSameVoice } from './_helpe
 
 const M = komutlar.bassboost;
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('bassboost').addStringOption((option) =>
   describe(option, 'bassboost', 'seviye')
     .setRequired(true)

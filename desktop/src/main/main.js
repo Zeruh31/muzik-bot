@@ -36,6 +36,7 @@ const { downloadVerified, LAVALINK_URL, LAVALINK_SHA256, LAVALINK_VERSION } = re
 const { isSafeExternalUrl } = require('./externalUrl');
 const { INVOKE_CHANNELS } = require('./ipcChannels');
 const { createStatusWatcher } = require('./botStatus');
+const { createServerConfigWatcher, validateChange, writeRequest, waitForAnswer } = require('./serverConfig');
 
 const APP_ORIGIN = 'app://muzik';
 const RENDERER_DIR = path.join(__dirname, '..', 'renderer');
@@ -60,6 +61,10 @@ const STATIC_FILES = {
   '/app.js': { file: path.join(RENDERER_DIR, 'app.js'), type: 'text/javascript; charset=utf-8' },
   '/styles.css': { file: path.join(RENDERER_DIR, 'styles.css'), type: 'text/css; charset=utf-8' },
   '/serverList.js': { file: path.join(RENDERER_DIR, 'serverList.js'), type: 'text/javascript; charset=utf-8' },
+  '/serverSettings.js': {
+    file: path.join(RENDERER_DIR, 'serverSettings.js'),
+    type: 'text/javascript; charset=utf-8',
+  },
   '/icon.png': { file: path.join(ASSETS_DIR, 'icon.png'), type: 'image/png' },
 };
 
@@ -199,6 +204,45 @@ function run() {
   statusWatcher.start();
   // "Stale" depends on the clock too (no update for 60 s), so re-send now and then.
   setInterval(() => send('olay:botDurumu', statusWatcher.snapshot()), 10_000).unref();
+
+  // ---- server settings (data/sunucu-yapisi.json, ayar-semasi.json, ayarlar-gorunum.json) ----------------
+  const configWatcher = createServerConfigWatcher({
+    getProjectDir: () => projectDir,
+    onChange: () => send('olay:sunucuAyar', { at: Date.now() }),
+  });
+  configWatcher.start();
+  const MAX_PENDING_SAVES = 4;
+  let pendingSaves = 0;
+
+  /** Saves one setting through the bot (data/istekler -> data/yanitlar); see serverConfig.js. */
+  async function saveServerSetting(payload) {
+    if (!projectDir) return { ok: false, hata: 'Proje klasörü bulunamadı.' };
+    // A request is never left waiting for a bot that is off: it would apply by surprise later.
+    if (statusWatcher.snapshot().stale) {
+      return { ok: false, botKapali: true, hata: 'Bot kapalı; ayarlar bot açıkken uygulanır.' };
+    }
+    const { schema } = configWatcher.snapshot();
+    const checked = validateChange(payload, { schema, guildOf: configWatcher.guildStructure });
+    if (!checked.ok) return checked;
+    if (pendingSaves >= MAX_PENDING_SAVES)
+      return { ok: false, hata: 'Önceki kayıtlar bekleniyor; biraz sonra deneyin.' };
+    pendingSaves += 1;
+    try {
+      const id = writeRequest(projectDir, checked.istek);
+      const { guildId, modul, alan } = checked.istek;
+      // The bot has claimed it: it will be applied, so the window says "uygulanıyor" until the answer comes.
+      const answer = await waitForAnswer(projectDir, id, {
+        onProgress: (durum) => send('olay:sunucuAyarDurum', { guildId, modul, alan, durum }),
+      });
+      const name = `${checked.istek.modul}.${checked.istek.alan}`;
+      appLog(answer.ok ? 'info' : 'warn', `Sunucu ayarı ${name}: ${answer.ok ? 'kaydedildi' : answer.hata}`);
+      return answer;
+    } catch (error) {
+      return { ok: false, hata: `İstek yazılamadı: ${error.message}` };
+    } finally {
+      pendingSaves -= 1;
+    }
+  }
 
   // ---- helper scripts -----------------------------------------------------------------
   async function runScript(script, args = []) {
@@ -370,6 +414,7 @@ function run() {
     refreshProjectDir();
     supervisor.refreshEnv();
     statusWatcher.refresh();
+    configWatcher.refresh();
     appLog('info', `Proje klasörü: ${projectDir ?? 'bulunamadı'}`);
     supervisor.checkConflicts();
     return { ok: Boolean(projectDir), options: appOptions() };
@@ -478,6 +523,8 @@ function run() {
       await shell.openExternal(String(url));
       return true;
     },
+    'sunucuAyar:al': (guildId) => configWatcher.guildView(String(guildId ?? '')),
+    'sunucuAyar:kaydet': (payload) => saveServerSetting(payload),
     'pano:kopyala': (text) => {
       clipboard.writeText(String(text ?? '').slice(0, 2_000_000));
       return true;

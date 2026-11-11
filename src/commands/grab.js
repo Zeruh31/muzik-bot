@@ -8,6 +8,9 @@ import { guildCommand, replySuccess } from './_helpers.js';
 
 const M = komutlar.grab;
 
+/** Lives under /muzik (src/commands/muzik.js). */
+export const ust = 'muzik';
+
 export const data = guildCommand('grab');
 
 export async function execute(interaction, { music }) {
