@@ -378,6 +378,41 @@ describe('MusicService', () => {
     await assert.rejects(service.stop('other'), (e) => e.code === 'NO_PLAYER');
   });
 
+  it('stopKeepChannel (voice "durdur"): empties the queue, repeat off, autoplay held back once, stays', async () => {
+    const player = fakePlayer('g', { current: track('now'), tracks: ['a', 'b'].map((t) => track(t)) });
+    player.repeatMode = 'queue';
+    const engine = new EventEmitter();
+    engine.players = new Map([['g', player]]);
+    engine.getPlayer = (id) => engine.players.get(id) ?? null;
+    let autoplay = true;
+    const service = new MusicService({
+      lavalink: { connected: true },
+      engine,
+      config,
+      logger: silent,
+      settings: { getAutoplay: () => autoplay, setAutoplay: (_g, on) => (autoplay = on) },
+    });
+    const hooks = [];
+    service.onStopRequest((guildId) => hooks.push(guildId));
+    await service.stopKeepChannel('g');
+    assert.deepEqual(hooks, ['g'], 'a pending source recovery is cancelled too');
+    assert.equal(player.queue.tracks.length, 0);
+    assert.equal(player.repeatMode, 'off');
+    assert.equal(autoplay, true, "the server's /autoplay setting is not touched");
+    assert.equal(player.getData('autoplaySuppressed'), true);
+    assert.deepEqual(player.calls, [['stopPlaying']]);
+    // The queue end that follows announces the end instead of adding a similar song.
+    const ended = [];
+    service.on('queueEnded', (g) => ended.push(g));
+    engine.emit('queueEnd', player);
+    assert.deepEqual(ended, ['g']);
+    // Queuing a song again lifts the hold.
+    await service.enqueue({ guildId: 'g', voiceChannelId: 'v1', textChannelId: 't1', tracks: [track('yeni')] });
+    assert.equal(player.getData('autoplaySuppressed'), false);
+    assert.equal(player.destroyed, false, 'the bot stays in the channel (the queue-end timer decides)');
+    await assert.rejects(service.stopKeepChannel('yok'), (e) => e.code === 'NO_PLAYER');
+  });
+
   it('playNext (/playfirst) moves any queue position to the front, including position 2', async () => {
     const player = fakePlayer('g', { current: track('now'), tracks: ['a', 'b', 'c', 'd'].map((t) => track(t)) });
     const service = serviceWith(player);

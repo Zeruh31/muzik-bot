@@ -402,6 +402,28 @@ describe('live stream resume', () => {
   });
 });
 
+describe('autoplay default', () => {
+  it('is on without a saved value, off only for an explicit false, on for true', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'muzik-ayar-'));
+    try {
+      const file = join(dir, 'sunucular.json');
+      const settings = createServerSettings({ file, logger: silent });
+      assert.equal(settings.getAutoplay('111111111111111111'), true, 'no record: on');
+      settings.setDjRole('111111111111111111', '222222222222222222');
+      assert.equal(settings.getAutoplay('111111111111111111'), true, 'record without the field: on');
+      settings.setAutoplay('111111111111111111', false);
+      assert.equal(settings.getAutoplay('111111111111111111'), false);
+      settings.setAutoplay('333333333333333333', true);
+      assert.equal(settings.getAutoplay('333333333333333333'), true);
+      const again = createServerSettings({ file, logger: silent });
+      assert.equal(again.getAutoplay('111111111111111111'), false, 'explicit false survives a restart');
+      assert.equal(again.getAutoplay('333333333333333333'), true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('persistent crossfade setting', () => {
   it('serverSettings keeps crossfade seconds next to the other fields', () => {
     const dir = mkdtempSync(join(tmpdir(), 'muzik-ayar-'));

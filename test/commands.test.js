@@ -39,6 +39,7 @@ const MUZIK_SUBCOMMANDS = [
   'remove',
   'search',
   'seek',
+  'sesli-komut', // voice commands: beni-dinleme / beni-dinle / durum (src/ozellikler/sesli-komut)
   'shuffle',
   'skipto',
   'volume',

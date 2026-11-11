@@ -41,3 +41,7 @@ process_whitelist.json
 
 # Local Claude Code state (agent worktrees, settings)
 .claude/
+
+# Python bytecode (stt/ voice command worker); its venv and models live outside the project
+__pycache__/
+*.pyc

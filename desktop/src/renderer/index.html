@@ -96,6 +96,13 @@
               <div class="card-body" data-role="body"></div>
               <div class="card-actions" data-role="actions"></div>
             </article>
+            <article class="card status-card" id="card-voice">
+              <div class="card-head">
+                <span class="card-title">Sesli komut</span>
+                <span class="pill" data-role="pill">-</span>
+              </div>
+              <div class="card-body" data-role="body"></div>
+            </article>
           </div>
         </section>
 
@@ -286,6 +293,24 @@
               </p>
               <button class="btn" id="tool-youtube" type="button">Token'ı kaydet</button>
               <div class="tool-result" id="tool-youtube-result"></div>
+            </article>
+            <article class="card tool" id="tool-voice">
+              <h2>Sesli komut bileşenini kur</h2>
+              <p class="muted">
+                Ses kanalında "müzik bot, tarkan dudu aç" gibi Türkçe komutlar için konuşma tanıma (faster-whisper). Ses
+                bu bilgisayarda işlenir, kaydedilmez. İsteğe bağlıdır; kurulunca Discord'da
+                <code>/ayar sesli-komut acik</code> ile sunucu başına açılır. Gerekenler:
+                <a href="#" id="tool-voice-uv">uv</a>.
+              </p>
+              <div class="tool-result" id="tool-voice-status"></div>
+              <div class="tool-row">
+                <button class="btn primary" id="tool-voice-gpu" type="button">Kur (NVIDIA GPU, ≈ 4 GB)</button>
+                <button class="btn" id="tool-voice-cpu" type="button">Kur (yalnız CPU, ≈ 1 GB)</button>
+                <button class="btn hidden" id="tool-voice-cancel" type="button">İptal</button>
+                <button class="btn danger" id="tool-voice-remove" type="button">Kaldır</button>
+              </div>
+              <div class="progress hidden" id="tool-voice-progress"><div class="progress-bar"></div></div>
+              <div class="tool-result" id="tool-voice-result"></div>
             </article>
           </div>
         </section>

@@ -136,6 +136,8 @@ export function describeLoadError(exception) {
 
 /** Autoplay does not pick any of the last this many played songs again. */
 export const AUTOPLAY_RECENT = 50;
+/** Player data key: autoplay held back after a voice "durdur" (src/ozellikler/sesli-komut), until a song is queued. */
+const AUTOPLAY_SUPPRESSED = 'autoplaySuppressed';
 /** After this many autoplay songs in a row fail to play, autoplay stops for that queue. */
 export const AUTOPLAY_MAX_FAILURES = 3;
 /** /liste çal loads the songs after the first one in batches of this size. */
@@ -340,6 +342,7 @@ export class MusicService extends EventEmitter {
       playing: Boolean(player.playing),
       paused: Boolean(player.paused),
       volume: player.volume,
+      muted: player.preMuteVolume != null,
       repeatMode: player.repeatMode,
       autoplay: this.isAutoplay(guildId),
       hasPrevious: (player.queue.previous?.length ?? 0) > 0,
@@ -521,7 +524,10 @@ export class MusicService extends EventEmitter {
 
     player.queue.add(accepted);
     // Someone queued music again: a stopped autoplay may try again after this queue.
-    if (accepted.some((t) => !t.autoplay)) this.#autoplayFor(guildId).failures = 0;
+    if (accepted.some((t) => !t.autoplay)) {
+      this.#autoplayFor(guildId).failures = 0;
+      player.setData?.(AUTOPLAY_SUPPRESSED, false); // a voice "durdur" held it back until now
+    }
     let startedPlaying = false;
     if (!player.playing && !player.paused) {
       try {
@@ -776,6 +782,23 @@ export class MusicService extends EventEmitter {
     await player.destroy('Durduruldu');
   }
 
+  /**
+   * Stops the music but stays in the channel (voice commands: the bot keeps listening). The queue is emptied,
+   * repeat and autoplay are switched off and the current track stops; leaving is then up to the usual rules
+   * (the queue-end timer, an empty channel; nothing with 24/7). The slash command /stop still uses stop().
+   */
+  async stopKeepChannel(guildId) {
+    this.#stopHooks.forEach((hook) => hook(guildId));
+    const player = this.#requirePlayer(guildId);
+    player.queue.clear();
+    if (player.repeatMode !== 'off') await player.setRepeatMode('off');
+    // Autoplay is held back for this player only (the server's /autoplay setting stays as it is) until
+    // someone queues a song again.
+    player.setData(AUTOPLAY_SUPPRESSED, true);
+    await player.stopPlaying();
+    this.#changed(guildId);
+  }
+
   /** Registers fn(guildId) => boolean, called on every stop request (used by recovery). */
   onStopRequest(fn) {
     this.#stopHooks.push(fn);
@@ -894,6 +917,21 @@ export class MusicService extends EventEmitter {
     }
     await player.setVolume(volume);
     this.#changed(guildId);
+  }
+
+  /** Voice-command mute: volume 0, the previous level is remembered for unmute (not a /muzik volume value). */
+  async mute(guildId) {
+    const player = this.#requirePlayer(guildId);
+    await player.mute();
+    this.#changed(guildId);
+  }
+
+  /** @returns {Promise<number>} the level the volume went back to */
+  async unmute(guildId) {
+    const player = this.#requirePlayer(guildId);
+    const level = await player.unmute();
+    this.#changed(guildId);
+    return level;
   }
 
   /** level: one of BASSBOOST_LEVELS keys. */
@@ -1064,7 +1102,7 @@ export class MusicService extends EventEmitter {
       this.emit('queueEnded', guildId);
       this.#changed(guildId);
     };
-    if (!this.isAutoplay(guildId) || !this.#lavalink?.connected) {
+    if (!this.isAutoplay(guildId) || !this.#lavalink?.connected || player.getData?.(AUTOPLAY_SUPPRESSED)) {
       announce();
       return;
     }
@@ -1263,6 +1301,8 @@ export class MusicService extends EventEmitter {
       this.#queueEnded(player);
     });
     engine.on('playerUpdate', (_old, player) => this.#changed(player.guildId));
+    // The voice connection is ready (joined or moved): voice commands attach to its receiver.
+    engine.on('voiceReady', (player) => this.emit('voiceConnected', player.guildId));
     engine.on('playerDestroy', (player, reason) => {
       this.#searchOrigins.delete(player.guildId);
       this.#autoplayState.delete(player.guildId);

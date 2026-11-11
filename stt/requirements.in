@@ -1,0 +1,6 @@
+# Sesli komut bileşeninin doğrudan bağımlılıkları (CPU). Kilit dosyası: requirements.txt (hash'li), şununla üretilir:
+#   uv pip compile requirements.in --generate-hashes --python-version 3.14 --python-platform windows -o requirements.txt
+faster-whisper==1.2.1
+ctranslate2==4.9.0
+onnxruntime==1.31.1
+numpy==2.5.4

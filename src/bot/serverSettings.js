@@ -72,10 +72,13 @@ export function createServerSettings({ file, logger, fs = nodeFs }) {
     return Object.hasOwn(data, guildId) ? data[guildId] : undefined;
   }
 
-  /** Sets (value) or removes (null/false) one field of a guild; memory changes only after the write. */
-  function setField(guildId, key, value) {
+  /**
+   * Sets (value) or removes (null/false/0) one field of a guild; memory changes only after the write.
+   * With keepFalse an explicit false is stored (for settings whose default is on).
+   */
+  function setField(guildId, key, value, keepFalse = false) {
     const entry = { ...entryOf(guildId) };
-    if (value) entry[key] = value;
+    if (value || (keepFalse && value === false)) entry[key] = value;
     else delete entry[key];
     const next = { ...data, [guildId]: entry };
     if (Object.keys(entry).length === 0) delete next[guildId];
@@ -98,14 +101,14 @@ export function createServerSettings({ file, logger, fs = nodeFs }) {
       setField(guildId, 'djRoleId', roleId || null);
     },
 
-    /** Whether /autoplay is on in a guild (off by default). */
+    /** Whether /autoplay is on in a guild (on by default; only an explicit false turns it off). */
     getAutoplay(guildId) {
-      return entryOf(guildId)?.autoplay === true;
+      return entryOf(guildId)?.autoplay !== false;
     },
 
     /** Turns /autoplay on or off. Throws SettingsSaveError like setDjRole. */
     setAutoplay(guildId, enabled) {
-      setField(guildId, 'autoplay', enabled === true);
+      setField(guildId, 'autoplay', enabled === true, true);
     },
 
     /** Crossfade seconds of a guild (0 = off, the default); MusicService validates the range. */

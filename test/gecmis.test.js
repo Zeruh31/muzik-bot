@@ -128,11 +128,11 @@ describe('JSON stores and reserved keys', () => {
     assert.equal({}.length, undefined);
 
     const file = newFile();
-    writeFileSync(file, '{"__proto__":{"djRoleId":"444444444444444444","autoplay":true}}');
+    writeFileSync(file, '{"__proto__":{"djRoleId":"444444444444444444","autoplay":false}}');
     const settings = createServerSettings({ file });
     assert.equal(settings.getDjRole('constructor'), null);
-    assert.equal(settings.getAutoplay('toString'), false);
-    assert.equal(settings.getAutoplay(GUILD), false, 'nothing leaks from the "__proto__" entry');
+    assert.equal(settings.getAutoplay('toString'), true);
+    assert.equal(settings.getAutoplay(GUILD), true, 'nothing leaks from the "__proto__" entry');
 
     const statsFile = newFile();
     writeFileSync(

@@ -65,7 +65,8 @@ export function computePosition({ seekBaseMs = 0, playbackDuration = 0, duration
  * engine that owns it, with the names MusicService listens to:
  *   trackStart(player, track), trackEnd(player, track, { reason }), trackError(player, track,
  *   { exception }), queueEnd(player), playerUpdate(null, player), playerDestroy(player, reason),
- *   sourceLost(player, { position, paused }) when the audio source (Lavalink) went away mid-track.
+ *   sourceLost(player, { position, paused }) when the audio source (Lavalink) went away mid-track,
+ *   voiceReady(player) when the voice connection became ready (first join and after a move).
  * trackEnd reasons: finished, replaced (skip), stopped, loadFailed, cleanup (destroyed).
  *
  * Crossfade (crossfadeMs > 0): CROSSFADE_PREPARE_LEAD_MS before the fade, the next track's
@@ -88,6 +89,8 @@ export class GuildPlayer {
   queue = new TrackQueue();
   repeatMode = 'off';
   volume;
+  /** Volume before a voice-command mute (null: not muted). Only the muted state uses it; /muzik volume ignores it. */
+  preMuteVolume = null;
   bassboost = 'none';
   /** Crossfade length in ms; 0 = off. */
   crossfadeMs = 0;
@@ -123,6 +126,7 @@ export class GuildPlayer {
   #updateTimer = null;
   #queueEndTimer = null;
   #ops = Promise.resolve();
+  #listening;
 
   constructor({
     guildId,
@@ -140,7 +144,11 @@ export class GuildPlayer {
     soundcloud = defaultSoundCloud(),
     openDirect = openDirectStream,
     crossfadeSeconds = 0,
+    // Voice commands (src/ozellikler/sesli-komut): true only for a guild where they are on and installed.
+    // Otherwise the bot joins deafened, as always: it receives no audio at all.
+    listening = () => false,
   }) {
+    this.#listening = listening;
     this.#soundcloud = soundcloud;
     this.#openDirect = openDirect;
     this.crossfadeMs = Math.max(0, Number(crossfadeSeconds) || 0) * 1000;
@@ -186,6 +194,23 @@ export class GuildPlayer {
     return Boolean(this.#pipeline?.carrier);
   }
 
+  /** The voice connection's receiver while connected and not deafened (voice commands), else null. */
+  get voiceReceiver() {
+    const connection = this.#connection;
+    if (!connection || connection.state?.status !== VoiceConnectionStatus.Ready) return null;
+    return connection.joinConfig?.selfDeaf === false ? (connection.receiver ?? null) : null;
+  }
+
+  /**
+   * Deafens or undeafens the bot in its channel without leaving it (voice commands switched on or off).
+   * Returns false when there is no connection.
+   */
+  setListening(on) {
+    const connection = this.#connection;
+    if (!connection || connection.state?.status === VoiceConnectionStatus.Destroyed) return false;
+    return connection.rejoin({ selfDeaf: !on, selfMute: false });
+  }
+
   getData(key) {
     return this.#data.get(key);
   }
@@ -203,7 +228,7 @@ export class GuildPlayer {
     return next;
   }
 
-  /** Joins the voice channel (self-deafened) and waits until Discord confirms it. */
+  /** Joins the voice channel (self-deafened unless voice commands listen) and waits until Discord confirms it. */
   connect() {
     return this.#run(() => this.#connect());
   }
@@ -248,6 +273,25 @@ export class GuildPlayer {
   }
 
   async setVolume(volume) {
+    this.preMuteVolume = null;
+    this.#applyVolume(volume);
+  }
+
+  /** Mutes (volume 0) and remembers the level; a second call keeps the first remembered level. */
+  async mute() {
+    if (this.preMuteVolume === null) this.preMuteVolume = this.volume;
+    this.#applyVolume(0);
+  }
+
+  /** Back to the level before the mute. @returns {number} the level */
+  async unmute() {
+    const level = this.preMuteVolume ?? this.volume;
+    this.preMuteVolume = null;
+    this.#applyVolume(level);
+    return level;
+  }
+
+  #applyVolume(volume) {
     this.volume = volume;
     // During a crossfade the mix plays through the previous track's resource (the carrier).
     for (const resource of [this.#pipeline?.resource, this.#pipeline?.carrier]) {
@@ -350,7 +394,7 @@ export class GuildPlayer {
       channelId: this.#voiceChannelId,
       guildId: this.guildId,
       adapterCreator: guild.voiceAdapterCreator,
-      selfDeaf: true,
+      selfDeaf: !this.#listening(this.guildId),
       selfMute: false,
     });
     if (connection !== this.#connection) {
@@ -370,9 +414,12 @@ export class GuildPlayer {
     }
   }
 
-  #onConnectionState(connection, _oldState, newState) {
+  #onConnectionState(connection, oldState, newState) {
     if (connection !== this.#connection || this.destroyed) return;
-    if (newState.status === VoiceConnectionStatus.Disconnected) {
+    if (newState.status === VoiceConnectionStatus.Ready && oldState?.status !== VoiceConnectionStatus.Ready) {
+      // First join and every reconnect (a move): voice commands (re)attach to the receiver.
+      this.#emit('voiceReady', this);
+    } else if (newState.status === VoiceConnectionStatus.Disconnected) {
       // Either a moderator moved/kicked the bot or the websocket closed: @discordjs/voice
       // re-signals for a move; a kick stays disconnected and the player is closed.
       Promise.race([

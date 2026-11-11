@@ -220,6 +220,7 @@ function renderStatus(next) {
       : null,
   );
 
+  renderVoiceCard();
   renderWelcome(next);
   renderConflict(next.conflict);
 
@@ -825,6 +826,138 @@ function showRestartBanner(need) {
 }
 
 // ---- tools -----------------------------------------------------------------------------
+
+// ---- voice command component ---------------------------------------------------------------
+let voiceState = null; // from the main process: { durum, profil, modeller, kuruluyor, gpu, bot }
+const deviceName = (device) => (device === 'cuda' ? 'GPU' : 'CPU');
+
+/** Status card: "kurulu değil / hazır / çalışıyor (GPU/CPU)". */
+function renderVoiceCard() {
+  const card = $('#card-voice');
+  if (!card) return;
+  const live = botData && !botData.stale ? botData.status?.voice : null;
+  if (live?.worker === 'hazir') {
+    setPill(card, [`Çalışıyor (${deviceName(live.device)})`, 'ok']);
+    setBody(card, h('div', { text: `Model: ${live.model ?? '?'} · dinlenen sunucu: ${live.guilds}` }));
+    return;
+  }
+  if (live?.worker === 'basliyor') {
+    setPill(card, ['Başlıyor', 'busy']);
+    setBody(card, h('div', { text: 'Konuşma tanıma modeli yükleniyor.' }));
+    return;
+  }
+  if (live?.worker === 'hata') {
+    setPill(card, ['Hata', 'bad']);
+    setBody(card, h('div', { text: 'Konuşma tanıma başlatılamadı; Kayıtlar sekmesine bakın.' }));
+    return;
+  }
+  const durum = voiceState?.kuruluyor ? 'kuruluyor' : (voiceState?.durum ?? 'kurulu-degil');
+  const pills = {
+    hazir: ['Hazır', 'ok'],
+    yarim: ['Yarım kaldı', 'warn'],
+    kuruluyor: ['Kuruluyor', 'busy'],
+    'kurulu-degil': ['Kurulu değil', ''],
+  };
+  setPill(card, pills[durum] ?? ['-', '']);
+  const texts = {
+    hazir: `Kurulu (${voiceState?.profil === 'gpu' ? 'GPU' : 'CPU'}). Discord'da /ayar sesli-komut acik ile açılır.`,
+    yarim: 'Kurulum tamamlanmadı. Araçlar > Sesli komut bileşenini kur ile devam edin.',
+    kuruluyor: 'Araçlar sekmesinde ilerlemeyi görebilirsiniz.',
+    'kurulu-degil': 'İsteğe bağlı. Araçlar > Sesli komut bileşenini kur.',
+  };
+  setBody(card, h('div', { text: texts[durum] ?? '' }));
+}
+
+/** Tool card: what is installed, which buttons make sense. */
+function renderVoiceTool() {
+  const v = voiceState;
+  if (!v) return;
+  const busy = v.kuruluyor;
+  const running = v.bot?.worker === 'hazir' || v.bot?.worker === 'basliyor';
+  const lines = [];
+  if (v.durum === 'hazir')
+    lines.push(`Kurulu: ${v.profil === 'gpu' ? 'GPU' : 'CPU'} (modeller: ${v.modeller.join(', ')}).`);
+  else if (v.durum === 'yarim') lines.push('Yarım kalmış bir kurulum var; Kur ile kaldığı yerden devam eder.');
+  else lines.push('Kurulu değil.');
+  lines.push(
+    v.gpu?.nvidia
+      ? `Ekran kartı: ${v.gpu.name} (${Math.round(v.gpu.vramMb / 1024)} GB). GPU kurulumu önerilir.`
+      : 'NVIDIA ekran kartı bulunamadı: yalnız CPU kurulumu (daha yavaş ve daha az doğru).',
+  );
+  lines.push(`Yer: ${v.dizin}`);
+  if (running) lines.push('Bot sesli komutu şu an kullanıyor: kurmak ya da kaldırmak için önce botu durdurun.');
+  $('#tool-voice-status').replaceChildren(...lines.map((text) => h('div', { class: 'muted small', text })));
+  $('#tool-voice-gpu').disabled = busy || running || !v.gpu?.nvidia;
+  $('#tool-voice-cpu').disabled = busy || running;
+  $('#tool-voice-remove').disabled = busy || running || v.durum === 'kurulu-degil';
+  $('#tool-voice-cancel').classList.toggle('hidden', !busy);
+  $('#tool-voice-progress').classList.toggle('hidden', !busy);
+}
+
+async function refreshVoice() {
+  try {
+    voiceState = await api.voiceStatus();
+  } catch {
+    return;
+  }
+  renderVoiceTool();
+  renderVoiceCard();
+}
+
+async function installVoice(profile) {
+  const size = voiceState?.boyutlar?.[profile] ?? '';
+  const ok = window.confirm(
+    `Sesli komut bileşeni kurulacak (${profile === 'gpu' ? 'NVIDIA GPU' : 'yalnız CPU'}, ${size} indirme ve disk).\n\n` +
+      'Python paketleri ve konuşma tanıma modelleri internetten (PyPI, NVIDIA, Hugging Face) indirilir. ' +
+      'Kurulum birkaç dakika sürebilir; İptal ile durdurabilirsiniz. Devam edilsin mi?',
+  );
+  if (!ok) return;
+  voiceState = { ...(voiceState ?? {}), kuruluyor: true };
+  renderVoiceTool();
+  renderVoiceCard();
+  $('#tool-voice-progress').firstElementChild.style.width = '0%';
+  $('#tool-voice-result').replaceChildren();
+  const result = await api.installVoice(profile);
+  $('#tool-voice-result').replaceChildren(
+    h('div', { class: `alert ${result.ok ? 'info' : result.cancelled ? 'warn' : 'error'}`, text: result.message }),
+    result.output
+      ? h('details', { class: 'output' }, h('summary', { text: 'Ayrıntılı çıktı' }), h('pre', { text: result.output }))
+      : null,
+  );
+  await refreshVoice();
+}
+
+$('#tool-voice-gpu').addEventListener('click', () => installVoice('gpu'));
+$('#tool-voice-cpu').addEventListener('click', () => installVoice('cpu'));
+$('#tool-voice-cancel').addEventListener('click', () => api.cancelVoiceInstall());
+$('#tool-voice-uv').addEventListener('click', (event) => {
+  event.preventDefault();
+  openLink('https://docs.astral.sh/uv/getting-started/installation/');
+});
+$('#tool-voice-remove').addEventListener('click', async () => {
+  if (
+    !window.confirm('Sesli komut bileşeni (Python ortamı ve modeller) silinsin mi? Gerekirse yeniden kurabilirsiniz.')
+  )
+    return;
+  const result = await api.removeVoice();
+  $('#tool-voice-result').replaceChildren(
+    h('div', { class: `alert ${result.ok ? 'info' : 'error'}`, text: result.message }),
+  );
+  await refreshVoice();
+});
+
+api.on('olay:sesliKomut', ({ aciklama, yuzde, adim, adimSayisi } = {}) => {
+  const bar = $('#tool-voice-progress .progress-bar');
+  const share = 100 / (adimSayisi || 1);
+  const done = ((adim || 1) - 1) * share + (Number.isFinite(yuzde) ? (yuzde / 100) * share : 0);
+  bar.style.width = `${Math.min(100, done).toFixed(1)}%`;
+  $('#tool-voice-result').replaceChildren(
+    h('div', {
+      class: 'muted small',
+      text: `${adim ?? '?'}/${adimSayisi ?? '?'} · ${aciklama ?? ''}${Number.isFinite(yuzde) ? ` (%${yuzde})` : ''}`,
+    }),
+  );
+});
 
 async function runTool(button, resultEl, fn) {
   button.disabled = true;
@@ -1550,6 +1683,7 @@ function renderStats() {
 
 function applyBotData(next) {
   botData = next ?? { status: null, stale: true, history: [] };
+  refreshVoice(); // the bot may have started or stopped its speech worker
   if ($('#view-servers').classList.contains('active')) renderServers();
   if ($('#view-stats').classList.contains('active')) renderStats();
   if (status) renderStatus(status);
@@ -1595,4 +1729,5 @@ api.on('olay:indirme', ({ received, total }) => {
   logState.entries = await api.logs();
   botData = await api.botStatus();
   renderStatus(await api.status());
+  await refreshVoice();
 })();

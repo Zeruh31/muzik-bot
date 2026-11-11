@@ -192,6 +192,27 @@ const GROUPS = [
         help: 'Şarkı adıyla arama nerede yapılsın.',
       },
       {
+        key: 'SESLI_KOMUT_MODEL',
+        label: 'Sesli komut modeli',
+        type: 'select',
+        options: [
+          { value: 'otomatik', label: 'Otomatik (GPU varsa turbo, yoksa small)' },
+          { value: 'turbo', label: 'turbo (NVIDIA GPU, daha doğru)' },
+          { value: 'small', label: 'small (CPU, daha hafif)' },
+        ],
+        default: 'otomatik',
+        restart: 'bot',
+        help: 'Sesli komutun konuşma tanıma modeli; bütün sunucular için tek. Bileşen Araçlar sekmesinden kurulur, özellik sunucu başına /ayar sesli-komut acik ile açılır.',
+      },
+      {
+        key: 'SESLI_KOMUT_TANI',
+        label: 'Sesli komut tanı modu',
+        type: 'bool',
+        default: 'false',
+        restart: 'bot',
+        help: 'Yalnız sorun ayıklamak için: açıkken uyandırma sözü bulunan sesli komut cümlelerinin metni Kayıtlar sekmesine yazılır ve uygulama kayıtları diske kaydeder. Kendi testinizde açın, sonra kapatın.',
+      },
+      {
         key: 'PLAY_SHOW_CHOICES',
         label: '/play sonuç listesi',
         type: 'bool',

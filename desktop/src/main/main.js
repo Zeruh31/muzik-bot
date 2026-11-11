@@ -37,6 +37,7 @@ const { isSafeExternalUrl } = require('./externalUrl');
 const { INVOKE_CHANNELS } = require('./ipcChannels');
 const { createStatusWatcher } = require('./botStatus');
 const { createServerConfigWatcher, validateChange, writeRequest, waitForAnswer } = require('./serverConfig');
+const { createSttInstaller, SIZES: STT_SIZES } = require('./sttInstaller');
 
 const APP_ORIGIN = 'app://muzik';
 const RENDERER_DIR = path.join(__dirname, '..', 'renderer');
@@ -430,7 +431,62 @@ function run() {
       return false;
     }
   };
+  // ---- voice command component (Araçlar) ---------------------------------------------
+  const sttInstaller = createSttInstaller({
+    getProjectDir: () => projectDir,
+    onProgress: (event) => send('olay:sesliKomut', event),
+    log: appLog,
+    killTree: (pid) => winproc.killTreeSync(pid),
+  });
+  let gpuInfo = null;
+  async function detectGpu() {
+    if (gpuInfo) return gpuInfo;
+    const result = await winproc
+      .run('nvidia-smi', ['--query-gpu=name,memory.total', '--format=csv,noheader,nounits'], {
+        timeoutMs: 8000,
+        encoding: 'utf8',
+      })
+      .catch(() => null);
+    const [name, total] = String(result?.code === 0 ? result.stdout : '')
+      .split(/\r?\n/)[0]
+      .split(',')
+      .map((s) => s.trim());
+    gpuInfo =
+      name && Number(total) > 0 ? { nvidia: true, name: name.slice(0, 80), vramMb: Number(total) } : { nvidia: false };
+    return gpuInfo;
+  }
+  /** The bot's worker holds the venv's files open: no install or removal while it runs. */
+  const sttWorkerRunning = () => {
+    const snapshot = statusWatcher.snapshot();
+    const worker = snapshot.stale ? 'kapali' : snapshot.status?.voice?.worker;
+    return worker === 'hazir' || worker === 'basliyor';
+  };
+  async function sttStatus() {
+    const snapshot = statusWatcher.snapshot();
+    return {
+      ...sttInstaller.status(),
+      kuruluyor: sttInstaller.busy,
+      boyutlar: STT_SIZES,
+      gpu: await detectGpu(),
+      bot: snapshot.stale ? null : (snapshot.status?.voice ?? null),
+    };
+  }
+
   const handlers = {
+    'sesliKomut:durum': () => sttStatus(),
+    'sesliKomut:kur': async (profile) => {
+      if (sttWorkerRunning())
+        return {
+          ok: false,
+          message: 'Sesli komut şu an çalışıyor. Önce botu durdurun (ya da botu ses kanalından çıkarın).',
+        };
+      return sttInstaller.install(profile === 'gpu' ? 'gpu' : profile === 'cpu' ? 'cpu' : null);
+    },
+    'sesliKomut:iptal': () => sttInstaller.cancel(),
+    'sesliKomut:kaldir': () => {
+      if (sttWorkerRunning()) return { ok: false, message: 'Sesli komut şu an çalışıyor. Önce botu durdurun.' };
+      return sttInstaller.remove();
+    },
     'durum:al': () => supervisor.status(),
     'botDurumu:al': () => statusWatcher.snapshot(),
     'servis:baslat': (options) => supervisor.startAll({ takeOver: options?.takeOver === true }),

@@ -145,6 +145,7 @@ describe('contract with the desktop app', () => {
       'running',
       'sayaclar',
       'schemaVersion',
+      'sesliKomut', // added for voice commands (the app's status card)
       'sunucular',
       'updatedAt',
     ]);
@@ -305,6 +306,7 @@ describe('contract with the desktop app', () => {
       'current',
       'guildId',
       'hasPrevious', // added for /previous and the "previous" button
+      'muted', // added for the voice command "sesi kapat" (volume 0, previous level remembered)
       'paused',
       'playing',
       'position',
@@ -319,6 +321,25 @@ describe('contract with the desktop app', () => {
     assert.equal(state.autoplay, false);
     assert.equal(state.hasPrevious, false);
     assert.equal(state.crossfade, 0);
+  });
+
+  it('the voice command component: the app installs where the bot looks, with the files the bot runs', async () => {
+    const { createRequire } = await import('node:module');
+    const desktop = createRequire(import.meta.url)('../desktop/src/main/sttInstaller.js');
+    const bot = await import('../src/ozellikler/sesli-komut/kurulum.js');
+    for (const env of [{ LOCALAPPDATA: 'C:\\L' }, { SESLI_KOMUT_DIZINI: 'D:\\x' }]) {
+      assert.equal(desktop.componentDir(env, 'win32'), bot.componentDir({ env, platform: 'win32' }));
+    }
+    assert.equal(desktop.pythonPath('R', 'win32'), bot.pythonPath('R', 'win32'));
+    assert.equal(desktop.MANIFEST_NAME, bot.MANIFEST_NAME);
+    assert.equal(desktop.MANIFEST_VERSION, bot.MANIFEST_VERSION);
+    assert.deepEqual([...desktop.MODEL_NAMES], [...bot.MODEL_NAMES]);
+    for (const file of ['stt/stt_worker.py', 'stt/model_indir.py', 'stt/requirements.txt', 'stt/requirements-gpu.txt'])
+      assert.ok(existsSync(join(PROJECT_ROOT, file)), file);
+    assert.equal(bot.WORKER_SCRIPT, join(PROJECT_ROOT, 'stt', 'stt_worker.py'));
+    // Model names the installer downloads are the ones model_indir.py knows.
+    const script = read('stt/model_indir.py');
+    for (const name of desktop.MODEL_NAMES) assert.ok(script.includes(`"${name}": (`), name);
   });
 
   it('a kicked bot closes its player and the engine forgets it', async () => {

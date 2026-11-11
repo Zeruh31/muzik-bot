@@ -29,6 +29,10 @@ const INVOKE_CHANNELS = Object.freeze([
   'pano:kopyala',
   'sunucuAyar:al',
   'sunucuAyar:kaydet',
+  'sesliKomut:durum',
+  'sesliKomut:kur',
+  'sesliKomut:iptal',
+  'sesliKomut:kaldir',
 ]);
 
 const EVENT_CHANNELS = Object.freeze([
@@ -39,6 +43,7 @@ const EVENT_CHANNELS = Object.freeze([
   'olay:botDurumu',
   'olay:sunucuAyar',
   'olay:sunucuAyarDurum',
+  'olay:sesliKomut',
 ]);
 
 module.exports = { INVOKE_CHANNELS, EVENT_CHANNELS };

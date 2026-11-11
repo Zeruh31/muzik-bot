@@ -67,7 +67,14 @@ export async function createApp({ config, logger, allowPrivilegedIntents = true 
   // Lavalink is used over REST only (search, YouTube audio stream, lyrics); the voice engine
   // sends the audio to Discord itself (README > Teknik notlar).
   const lavalink = createLavalinkManager(client, config, logger.child('lavalink'));
-  const engine = createVoiceEngine({ client, rest: lavalink, config, logger: logger.child('ses') });
+  const engine = createVoiceEngine({
+    client,
+    rest: lavalink,
+    config,
+    logger: logger.child('ses'),
+    // The bot joins undeafened only where voice commands are on and installed (src/ozellikler/sesli-komut).
+    playerOptions: { listening: (guildId) => context.sesliKomut?.listening(guildId) ?? false },
+  });
   const settings = createServerSettings({ file: SETTINGS_FILE, logger: logger.child('ayarlar') });
   const history = createHistoryStore({ file: HISTORY_FILE, logger: logger.child('geçmiş') });
   const playlists = createPlaylistStore({ file: PLAYLISTS_FILE, logger: logger.child('listeler') });
@@ -106,6 +113,7 @@ export async function createApp({ config, logger, allowPrivilegedIntents = true 
     nowPlaying: null, // set by the announcer: which message carries the live control buttons
     ozellikler: null, // feature modules (src/ozellikler/index.js): settings, scheduler, panel, components
     masaustu: null, // settings bridge to the desktop app; started on login, stopped by index.js on shutdown
+    sesliKomut: null, // voice commands (src/ozellikler/sesli-komut/yonetici.js), set by that module
     startedAt: Date.now(),
   };
 

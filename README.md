@@ -45,6 +45,7 @@ Discord için açık kaynak müzik botu. YouTube'dan (ve isteğe bağlı olarak 
 12. [Sık karşılaşılan hatalar](#12-sık-karşılaşılan-hatalar)
 13. [Kendin düzenlemek istersen](#13-kendin-düzenlemek-istersen)
 14. [Teknik notlar](#14-teknik-notlar)
+15. [Sesli komut (isteğe bağlı)](#15-sesli-komut-isteğe-bağlı)
 
 Bütün komutlar bu klasörde açılmış bir **PowerShell** penceresinde yazılır. Klasörü açmanın kolay yolu: Dosya Gezgini'nde `Müzik Bot` klasörüne girin, adres çubuğuna `pwsh` yazıp Enter'a basın.
 
@@ -304,7 +305,7 @@ Komut sayısı arttıkça kullanmak zorlaşmasın diye komutlar gruplandı: en s
 | `/muzik volume seviye:` | Ses seviyesi (1–150; boş bırakılırsa mevcut seviyeyi söyler) |
 | `/muzik crossfade saniye:` | Şarkılar arası geçiş süresi (0–12 sn, 0 = kapalı; boş bırakılırsa mevcut süreyi söyler) |
 | `/muzik bassboost seviye:` | Bas güçlendirme: Kapalı, Düşük, Orta, Yüksek |
-| `/muzik autoplay durum:` | Otomatik çalma: kuyruk bitince son şarkıya benzer bir şarkı ekler. Boş bırakılırsa açık/kapalı arasında geçer; ayar sunucu başına kalıcıdır |
+| `/muzik autoplay durum:` | Otomatik çalma: kuyruk bitince son şarkıya benzer bir şarkı ekler. Boş bırakılırsa açık/kapalı arasında geçer; ayar sunucu başına kalıcıdır; varsayılan olarak AÇIK, kaydı olmayan sunucuda da açıktır |
 | `/muzik liste kaydet ad:` | Çalan şarkıyı ve kuyruğu bu adla kayıtlı liste yapar |
 | `/muzik liste çal ad:` | Kayıtlı listeyi kuyruğa ekler |
 | `/muzik liste ekle ad:` | Çalan şarkıyı listeye ekler (liste yoksa oluşturur) |
@@ -443,7 +444,7 @@ Kayıt kanalının ayarları tek tek alt komut yerine `/ayar kayit kanal`, `/aya
 
 **Kontrol düğmeleri:** "Şimdi çalıyor" mesajının altında ⏮️ önceki, ⏸️/▶️ duraklat/devam, ⏭️ atla, ⏹️ durdur, 🔁 döngü (Kapalı → Şarkı → Kuyruk) ve 🔀 karıştır düğmeleri vardır. Düğmeler komutlarla aynı kurallara uyar: botla aynı ses kanalında olmak ve (ayarlıysa) DJ rolü. Yetkisi olmayan kişiye yalnız onun gördüğü kısa bir uyarı çıkar. Duraklatma, döngü ya da kuyruk değişince mesaj güncellenir; şarkı bitince eski mesaj silinir (silinemezse düğmeleri kaldırılır).
 
-**Otomatik çalma (`/muzik autoplay`):** Açıkken kuyruk bitince son YouTube şarkısına benzer bir şarkı eklenir: önce YouTube'un o şarkı için hazırladığı "mix" listesi (`watch?v=<id>&list=RD<id>`, Lavalink ile yüklenir), olmazsa sanatçı + başlık araması. (Ayrı bir test Lavalink'iyle denendi: bu adres 25 parçalık bir "Mix - ..." listesi döndürüyor; yalnız `RD<id>` yazmak boş sonuç veriyor.) Son çalınan 50 şarkıdan hiçbiri yeniden seçilmez; otomatik çalmanın seçip çalamadığı şarkılar da (ör. yaş kısıtlamalı) bir daha seçilmez. Üst üste 3 şarkı çalınamazsa otomatik çalma o kuyruk için durur ve kanala tek bir uyarı yazılır; biri yeni şarkı ekleyince yeniden devreye girer. Eklenen şarkının "Şimdi çalıyor" mesajında otomatik çalmadan geldiği yazar. Ses kanalında kimse yoksa şarkı eklenmez; boş kanaldan ayrılma kuralları aynen geçerlidir. Ayar `data/sunucular.json` dosyasında kalır.
+**Otomatik çalma (`/muzik autoplay`):** Varsayılan olarak açıktır (bir sunucuda açıkça kapatılmadıysa); açıkken kuyruk bitince son YouTube şarkısına benzer bir şarkı eklenir: önce YouTube'un o şarkı için hazırladığı "mix" listesi (`watch?v=<id>&list=RD<id>`, Lavalink ile yüklenir), olmazsa sanatçı + başlık araması. (Ayrı bir test Lavalink'iyle denendi: bu adres 25 parçalık bir "Mix - ..." listesi döndürüyor; yalnız `RD<id>` yazmak boş sonuç veriyor.) Son çalınan 50 şarkıdan hiçbiri yeniden seçilmez; otomatik çalmanın seçip çalamadığı şarkılar da (ör. yaş kısıtlamalı) bir daha seçilmez. Üst üste 3 şarkı çalınamazsa otomatik çalma o kuyruk için durur ve kanala tek bir uyarı yazılır; biri yeni şarkı ekleyince yeniden devreye girer. Eklenen şarkının "Şimdi çalıyor" mesajında otomatik çalmadan geldiği yazar. Ses kanalında kimse yoksa şarkı eklenmez; boş kanaldan ayrılma kuralları aynen geçerlidir. Ayar `data/sunucular.json` dosyasında kalır.
 
 **Kayıtlı listeler (`/muzik liste`):** Sunucu başına `data/listeler.json` dosyasında tutulur (yarım dosya kalmayacak biçimde yazılır). Her şarkı için yalnız Lavalink'in yeniden yükleyebileceği bilgi saklanır: adres, başlık, süre (Spotify şarkılarında ayrıca çalınan YouTube videosunun adresi). Liste başına en fazla 500 şarkı, sunucu başına en fazla 50 liste. Ad en fazla 32 karakter; harf, rakam, boşluk, `-` ve `_` kullanılabilir, büyük/küçük harf fark etmez. Komut yazarken ad otomatik tamamlanır. `/muzik liste çal` her şarkıyı Lavalink'ten yeniden yükler: ilk şarkı yüklenir yüklenmez çalmaya başlar, kalanlar arka planda sırayla eklenir ve mesaj "120/500 eklendi" diye güncellenir. Bir sunucuda aynı anda tek liste yüklenir. Artık açılmayan şarkılar atlanır ve sayısı yazılır.
 
@@ -494,7 +495,7 @@ Kod bilmeden değiştirebileceğiniz her şey iki dosyada toplandı. Değişikli
 | Dosya | İçinde ne var |
 |---|---|
 | `src/mesajlar.js` | Botun Discord'da yazdığı **bütün** mesajlar, komut açıklamaları ve web panelinin hata mesajları, Türkçe başlıklarla (panelin sayfa yazıları `src/panel/public` içinde; konsol kayıtları bot sahibine yönelik olduğu için kendi dosyalarında) |
-| `src/ozellikler/*/mesajlar.js` | Kontrol merkezi (`menu`), müzik bölümü (`muzik`), `/ayar` (`ayarlar`), `/oyun` araçları (`takim`, `sans`, `anket`, `cekilis`), ücretsiz oyun kartı (`ucretsiz-oyunlar`), geçici odalar (`gecici-oda`), rol menüleri ve takım arama (`roller-ve-ara`), kayıt kanalı (`kayit`), seviye (`seviye`), hoş geldin/güle güle (`karsilama`) ve `/help` kategorileri (`yardim`) gibi her özelliğin kendi yazıları ve komut açıklamaları; her özelliğin kendi dosyası olduğu için biri değişirken öbürü bozulmaz |
+| `src/ozellikler/*/mesajlar.js` | Kontrol merkezi (`menu`), müzik bölümü (`muzik`), `/ayar` (`ayarlar`), `/oyun` araçları (`takim`, `sans`, `anket`, `cekilis`), ücretsiz oyun kartı (`ucretsiz-oyunlar`), geçici odalar (`gecici-oda`), rol menüleri ve takım arama (`roller-ve-ara`), kayıt kanalı (`kayit`), seviye (`seviye`), hoş geldin/güle güle (`karsilama`), sesli komut (`sesli-komut`; Türkçe söyleyişler aynı klasörde `kaliplar.js`) ve `/help` kategorileri (`yardim`) gibi her özelliğin kendi yazıları ve komut açıklamaları; her özelliğin kendi dosyası olduğu için biri değişirken öbürü bozulmaz |
 | `src/gorunum.js` | Hata rengi, botun durumu ("Dinliyor: /help"), seçim listesindeki sonuç sayısı ve süresi |
 | `.env` | Ana renk (`EMBED_COLOR`), ses, 24/7, seçim listesi açık/kapalı (`PLAY_SHOW_CHOICES`), bot sahibi (`BOT_OWNER_IDS`), `/help` altındaki bağlantılar (`BRAND_SUPPORT_URL`, `BRAND_AUTHOR_NAME`, `BRAND_AUTHOR_URL`; boşsa gösterilmez) |
 
@@ -543,6 +544,8 @@ Dosyaların başında "BURAYA DOKUNMANA GEREK YOK" yazanlar (panel güvenliği, 
 3. `npm run deploy-commands` çalıştırın, botu yeniden başlatın. Komut dosyası kendiliğinden yüklenir. (`npm test` yeni komutu "beklenmeyen komut" diye işaretler; `test/commands.test.js` içindeki listeye `'ping'` eklemeniz yeterli.) Komutun `/muzik` altında olmasını istiyorsanız dosyaya `export const ust = 'muzik';` satırını ekleyin; o zaman `/muzik ping` olur ve test listesinde `MUZIK_SUBCOMMANDS`'a girer.
 
 Müzik kontrol eden bir komut yazdıysanız (ör. çalanı durduran) ve DJ rolüne tabi olsun istiyorsanız adını `src/bot/dj.js` içindeki listeye ekleyin.
+
+**Sesli komut kalıbı eklemek:** `src/ozellikler/sesli-komut/kaliplar.js` dosyasında ilgili niyetin `kaliplar` listesine bir satır ekleyin. Türkçe harfleri İngilizce karşılıklarıyla yazın (ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u), noktalama koymayın. `a|b` seçeneklerden biri, `[a]` isteğe bağlı kelime; `{sorgu}` şarkı adı, `{ad}` liste adı, `{sayi}`, `{sure}`, `{sira}` sayı, süre ve sıra yerleridir. Örnek: "şu şarkıyı geçiver" demek istiyorsanız `gec` niyetine `'sarkiyi geciver'` ekleyin (dolgu kelimesi "şu" kendiliğinden atlanır). Aynı niyetin `ornekler` listesine de Türkçe yazımıyla bir örnek ekleyin; `npm test` her örneğin doğru niyete gittiğini ve sohbet cümlelerinin komut sanılmadığını denetler. Ne söylendiğini görmek için tanı modunu açın ve `npm run sesli-komut:anlasilmayan` ile anlaşılmayan cümlelere bakın. Yeni bir niyet türü (yeni bir eylem) kod ister: `komutlar.js` (çift kanıt, DJ), `yonetici.js` (ne yapılacağı) ve `mesajlar.js` (cevap).
 
 ## 14. Teknik notlar
 
@@ -603,6 +606,8 @@ src/
     kayit/            kayıt kanalı olayları, bellekteki mesaj önbelleği (onbellek.js; diske yazılmaz)
     seviye/           /seviye, sağ tık "Seviyesini göster": XP kuralları (xp.js), data/xp.json deposu (depo.js)
     karsilama/        hoş geldin / güle güle mesajı ve kartı, otomatik rol
+    sesli-komut/      sesli komut: kaliplar.js (Türkçe kalıplar), niyet.js (metin → komut), sayilar.js, kapilar.js, komutlar.js,
+                      dinleyici.js (kişi başına ses alma), isci.js (Python işçisi), yonetici.js, kurulum.js
     yardim/           /help kategori menüsü
   panel/
     index.js          paneli yalnız PANEL_ENABLED=true ise yükler ve başlatır
@@ -627,6 +632,9 @@ data/roller-ve-ara.json     rol panelleri, oyun rolleri ve açık takım arama i
 data/xp.json          seviye: kullanıcı kimliği başına XP, seviye, son XP'li mesaj zamanı, ses dakikası; seviye
                       rolleri, XP almayan kanal/roller (schemaVersion 1; birkaç saniyede bir toplu yazılır); git'e girmez
 data/karsilama-bekleyen.json  üyelik kurallarını bekleyenler (sunucu, kullanıcı kimliği, katılma zamanı; en çok 7 gün); git'e girmez
+data/sesli-komut.json sesli komutta kendini hariç tutanların kimlikleri (sunucu başına; ses ya da metin yok); git'e girmez
+stt/                  sesli komutun Python işçisi (stt_worker.py), model indirici (model_indir.py) ve sabit
+                      sürümlü paket listeleri; Python ortamı ve modeller proje dışında (15. bölüm)
 assets/fonts/         kartların yazı tipleri (Noto Sans, Noto Emoji) ve OFL lisans metinleri
 lavalink/             application.yml, indir.ps1, baslat.ps1
 scripts/              deploy-commands, youtube-token, kontrol, check, hepsini-baslat
@@ -642,6 +650,7 @@ test/                 node:test testleri
 - `lavalink`: `connected`, `version`, `players`, `playingPlayers`, `uptimeMs`, `cpuLoad`, `memoryUsed`
 - `sayaclar.toplam` ve `sayaclar.oturum`: `songsPlayed`, `commandsUsed`, `commands` (komut başına), `topSongs` (en çok çalınan 10: `title`, `uri`, `count`), `songsByGuild`
 - `sunucular[]`: `id`, `name`, `iconUrl`, `memberCount`, `joinedAt`, `djRole`, `voice` (`channelName`, `listeners`), `playing` (`title`, `author`, `uri`, `positionMs`, `durationMs`, `isStream`, `paused`), `queueLength`, `repeatMode`, `volume`, `songsPlayed`
+- `sesliKomut` (sonradan eklendi): `kurulu`, `isci` (`kapali`, `basliyor`, `hazir`, `hata`), `cihaz` (`cuda`/`cpu`), `model`, `dinlenenSunucu`. Konuşma ya da metin yoktur.
 
 Dosyada token, şifre ya da kullanıcı bilgisi (şarkıyı kim istedi gibi) yoktur; aynı kural `data/gecmis.json` için de geçerlidir. (`data/listeler.json` yalnız silme yetkisi için listeyi oluşturanın Discord kimliğini tutar.)
 
@@ -697,6 +706,66 @@ npm run kontrol        # kurulum kontrolü
 npm --prefix desktop test   # masaüstü uygulamasının testleri
 ```
 
+## 15. Sesli komut (isteğe bağlı)
+
+Bot ses kanalındayken Türkçe konuşarak müziği yönetebilirsiniz: "**müzik bot**, tarkan dudu dudu aç", "**müzik bot**, müziği durdur" (duraklatır). Konuşma bu bilgisayarda tanınır (faster-whisper); ses dışarı gönderilmez, diske yazılmaz. Özellik **varsayılan kapalıdır** ve sunucu başına açılır.
+
+**Kurulum (bir kez, bot sahibi):**
+
+1. [uv](https://docs.astral.sh/uv/getting-started/installation/) kurulu olmalı (Python'u da kendisi getirir).
+2. Masaüstü uygulaması > **Araçlar** > **Sesli komut bileşenini kur**: NVIDIA ekran kartı varsa **GPU** (≈ 4 GB: CUDA kütüphaneleri ≈ 2 GB, turbo modeli 1,6 GB, small modeli 0,5 GB), yoksa **yalnız CPU** (≈ 1 GB). İlerleme gösterilir, **İptal** ile durur (yeniden basınca kaldığı yerden sürer), **Kaldır** her şeyi siler. Ana ekrandaki "Sesli komut" kartı durumu gösterir: kurulu değil / hazır / çalışıyor (GPU/CPU).
+3. Bileşen proje klasörüne değil kullanıcı verisine kurulur: `%LOCALAPPDATA%\MuzikBot\sesli-komut` (`venv\`, `models\`, `kurulum.json`; git'e girmez). Paketler `stt/requirements*.txt` kilit dosyalarındaki sürüm ve SHA-256 özetleriyle, yalnız hazır tekerlek olarak kurulur (`--require-hashes --only-binary :all:`; kaynak koddan derleme yok; kilitler `stt/requirements*.in` dosyalarından `uv pip compile --generate-hashes` ile üretilir). Modeller belirli bir Hugging Face sürümüne bağlıdır ve SHA-256 ile doğrulanır. **Kaldır** yalnız kurulumun oluşturduğu `venv\`, `models\` ve `kurulum.json`'u siler, o da yalnız `kurulum.json` varsa; sürücü kökü, kullanıcı profili ya da sistem klasörü kurulum yeri olarak reddedilir.
+
+Uygulama olmadan elle kurmak isterseniz (PowerShell, proje klasöründe; GPU için `requirements-gpu.txt` ve `turbo,small`):
+
+```powershell
+$d = "$env:LOCALAPPDATA\MuzikBot\sesli-komut"
+uv venv --python 3.14 "$d\venv"
+uv pip install --python "$d\venv\Scripts\python.exe" --require-hashes --only-binary :all: -r stt\requirements.txt
+& "$d\venv\Scripts\python.exe" -I -X utf8 stt\model_indir.py --out "$d\models" --models small
+'{"surum":1,"durum":"hazir","profil":"cpu"}' | Set-Content "$d\kurulum.json"
+```
+
+**Açmak (sunucu yöneticisi):** `/ayar sesli-komut acik deger:True`. `uyandirma`: komuttan önce söylenecek söz (varsayılan "müzik bot", ör. "dj bot" ya da botunuzun adı). Tanıma modeli bütün sunucular için tektir ve **bot sahibinin** ayarıdır: `.env` içinde `SESLI_KOMUT_MODEL` (`otomatik`: GPU varsa ve 3 GB boş ekran belleği varsa turbo, yoksa small; `turbo`; `small`; masaüstü uygulamasının Ayarlar sekmesinde de var); değişince bot yeniden başlar. Bot zaten kanaldaysa açınca hemen dinlemeye başlar, kapatınca hemen bırakır.
+
+**Komutlar** (uyandırma sözünden sonra; kalıplar `src/ozellikler/sesli-komut/kaliplar.js` içinde, yeni söyleyiş eklemek için 13. bölüm). Cümlenin tamamı bir kalıba uymalıdır; "şu, bir, biraz, lütfen, abi, kanka, hadi, bi" gibi dolgu kelimeleri her yerde atlanır, "Tarkan'ı", "şarkıyı" gibi ekler tanınır. Sayılar rakamla ya da yazıyla söylenebilir ("elli", "yüzde 50", "%50", "yarım dakika", "bir buçuk dakika", "üçüncü", "3.").
+
+| Söyleyin (örnekler) | Bot |
+|---|---|
+| "<şarkı> aç", "<şarkı> çal", "... çalar mısın", "çal <şarkı>" | arar, ilk sonucu çalar ya da sıraya ekler |
+| "kuyruğa <şarkı> ekle", "<şarkı>'ı sıraya ekle" | sıranın sonuna ekler |
+| "hemen <şarkı> çal", "şimdi <şarkı> aç" | `/playfirst` gibi: sıradaki şarkı yapar (bir şey çalmıyorsa hemen çalar) |
+| "<ad> listemi çal", "<ad> listesini aç" | `/muzik liste` ile kaydedilmiş listeyi çalar |
+| "müziği kapat", "kapat", "bitir", "müziği bitir", "kuyruğu temizle", "listeyi temizle", "çalma" | sırayı boşaltır, tekrarı kapatır, otomatik çalmayı o sıra için bastırır, çalanı durdurur; bot kanalda kalır ve dinler (sonra her zamanki kurallarla ayrılır). Yazılı `/stop` eskisi gibi kanaldan çıkar |
+| "geç", "atla", "sonrakine geç", "bir sonraki şarkı", "pas geç", "bunu geç", "başka şarkı" | sonraki şarkı |
+| "üçüncü şarkıya geç", "sıradaki 2. şarkıyı çal" | sıradaki o şarkıya atlar |
+| "önceki şarkı", "geri dön" | önceki şarkı |
+| "durdur", "dur", "müziği durdur", "şarkıyı durdur", "duraklat", "bekle", "bi dur", "sus", "kes", "müziği kes", "yeter" · "devam et", "kaldığın yerden devam et" | duraklatır · sürdürür |
+| "sesi kıs", "sesi biraz kıs" · "sesi aç", "çok kısık" | sesi 20 azaltır · artırır |
+| "sesi yüzde elli yap", "sesi 30 yap", "sesi sonuna kadar aç" | sesi o seviyeye getirir ("sonuna kadar" = 100) |
+| "otuz saniye ileri sar", "1 dakika geri al", "başa sar", "şarkıyı baştan başlat" | çalan şarkıda sarar |
+| "tekrarla", "döngüye al" · "listeyi tekrarla" · "döngüyü kapat" · "karıştır" | şarkı tekrarı · sıra tekrarı · tekrar kapalı · karıştırır |
+| "otomatik çalmayı aç" / "kapat" | otomatik çalma (`/muzik autoplay` gibi) |
+| "çalan şarkı ne", "sırada ne var", "kaç şarkı var" | yalnız kanala yazar |
+
+Bot anladığında komutun yazıldığı kanala kısa bir cevap yazar ("🎙️ **Ali**: ▶️ Tarkan - Dudu çalıyorum"); uyandırma sözü net ama komut anlaşılmadıysa "anlamadım" der (yakın bir komut varsa: "anlamadım — 'sesi kıs' mı dediniz?"; birden çok komuta uyan belirsiz bir cümlede de hiçbir şey yapmaz), uyandırma sözü yoksa hiçbir şey yapmaz.
+
+**İpucu:** Discord'da ses etkinliği (voice activity) kullanıyorsanız mikrofon geç açılır ve ilk hece kesilebilir ("Kutluay bot" → "luay bot"). En iyisi giriş hassasiyetini düşürmek ya da bas-konuş kullanmaktır; sözün önüne "Hey" demek de işe yarar ("Hey Kutluay bot, geç"). Söz önündeki "hey, ey, hop, şey, evet, tamam, bak, abi" atlanır. Bot kesik bir sözü yalnız sesin baştan kesildiğine dair kanıt varsa (konuşma alınan sesin ilk 150 ms'sinde başlamışsa; 10 saniyelik bölmelerin başında asla) ve yalnız cümle başında kabul eder: ikinci kelime tam olmalı, kalan kısım sözün ilk kelimesinin en az 3 harflik sonu olmalı ve sıradan bir kelime olmamalıdır ("luay bot" evet; "ay bot", "vay bot", "hay bot", "kolay bot", "okay bot" hayır). Kesik eşleşmede her komut ikinci tanımayla doğrulanır, komut çıkmazsa bot "anlamadım" bile demez. Ölçüm (TTS, GPU, 28 komut, konuşmanın başından kesilerek): kesiksiz 21, 150 ms kesik 14, 250 ms kesik 7 doğru komut; hepsinde 0 yanlış komut ve komut olmayan cümlelerde 0 uyanma.
+
+**Kurallar:** Eğik çizgi komutlarıyla aynı: konuşan botla aynı ses kanalında olmalı, DJ rolü ayarlıysa DJ komutları (geç, durdur, ses ...) yine DJ ister; kişi başına 30 saniyede en çok 5, sunucu başına 15 komut. Yanlış komutu önlemek için: uyandırma sözü cümlenin ilk 3 kelimesinde olmalı; Whisper'ın "konuşma yok" olasılığı yüksek ya da tekrar döngüsüne girmiş metin atılır; çalanı değiştiren komutlar (kapat, geç, durdur/duraklat, sesi kıs, ses yüzdesi, sarma, sıraya atlama, döngü, karıştır, otomatik çalma) ikinci bir tanımadan aynı sonucu (aynı değerlerle) almazsa uygulanmaz, bilgi komutları almaz; anlamsız komut (çalmıyorken "geç") yok sayılır; bir cümlede birkaç komut söylenirse yalnız ilki alınır. Geç kalan komut uygulanmaz: işçi sırada 4 saniyeden fazla bekleyen cümleyi atar (sıra dolarsa en eskiyi), bot da cümlenin bitişinden 5 saniyeden fazla geçmişse komutu uygulamaz; o arada şarkı değiştiyse şarkıya bağlı komutları (geç, önceki, tekrarla, sarma, sıraya atlama) uygulamaz (ör. "geç" yeni şarkıyı atlamasın).
+
+**Kendi sesini çıkarmak:** Herkes `/muzik sesli-komut beni-dinleme` ile kendi sesini bu sunucuda tamamen dışarıda bırakabilir (paketleri çözülmeden atılır), `/muzik sesli-komut beni-dinle` ile geri alır; `/muzik sesli-komut durum` durumu gösterir. Aynı düğme `/menu`'deki "Sesli komut" bölümünde de var (özellik açıkken görünür).
+
+**Gizlilik ve Discord kuralları:** Bot yalnız özelliğin açık olduğu sunucularda **sağır olmadan** katılır; diğer sunucularda eskisi gibi sağır katılır ve hiç ses almaz. **Discord politikasına uyum için** sesli komut açıkken bot her ses kanalına girdiğinde ve başka kanala taşındığında metin kanalına "🎙️ Sesli komut açık — kendini hariç tutmak için `/muzik sesli-komut beni-dinleme`" yazar; bu bildirim kapatılamaz (aynı kanala kısa sürede yeniden girişte 10 dakikada bir kez). Discord'un Geliştirici Politikası ve Hizmet Şartları, kullanıcı verisinin (ses dahil) bilgileri dışında işlenmemesini bekler: özelliği açmadan önce sunucudakilere söyleyin, isteyenin kendini hariç tutabildiğini anlatın. Ses yalnız bellekte işlenir ve atılır (ikinci tanıma için tutulan ses en çok 15 saniye; kişi kanaldan çıkınca ya da kendini hariç tutunca hemen silinir); tanınan metin hiçbir yere (konsol ve kayıt dosyaları dahil) yazılmaz, yalnız anlaşılan komutun cevabı kanala gider. İşçi süreci ağa çıkmaz (Hugging Face çevrimdışı kipte), botun `.env` değerlerini görmez. Bileşen yalnız kurulum sırasında internetten (PyPI, NVIDIA, Hugging Face) indirir.
+
+**Nasıl çalışır:** Bot kanaldaki her kişiye ayrı abone olur (DAVE uçtan uca şifreli ses, `@discordjs/voice`), Opus'u 16 kHz mono'ya çevirir ve uzun ömürlü bir Python sürecine (`stt/stt_worker.py`, stdin/stdout, uzunluk önekli çerçeveler) verir. İşçi Silero VAD ile cümleyi keser (0,6-10 sn arası cümleler), faster-whisper ile yazıya döker (GPU: large-v3-turbo, int8_float16; CPU: small, int8, önce ilk 1,5 sn çözülür, başta uyandırma sözü yoksa gerisi işlenmez). İşçi yalnız sesli komutu açık bir kanalda bot varken çalışır; bot son kanaldan ayrılınca öldürülür (ekran belleği boşalır). Çökerse 2, 10 ve 30 saniye sonra yeniden başlatılır; 10 dakikada üç çöküşten sonra (ya da model bulunamazsa) kanala bildirir ve dinlenen kanal varken 5 dakikada bir yeniden dener. DAVE çözümü bozulan bir kişinin aboneliği 1, 2, 5, 10, 30 saniye artan beklemeyle yeniden açılır.
+
+**Ölçümler** (Ryzen 7 9800X3D, RTX 5070 Ti; Türkçe TTS sesleriyle, Discord'suz uçtan uca): GPU turbo bir cümleyi ≈ 0,11 sn'de çözer, model 2,2 sn'de yüklenir; ≈ 1,2-2,3 GB ekran belleği. Temiz, Opus, müzikli ve gürültülü 28 komut kaydında 21 doğru komut, **0 yanlış komut**, 12 komut olmayan cümlede 0 uyanma. CPU small cümle başına ≈ 0,9 sn, aynı kayıtlarda 14/28 doğru, 0 yanlış: CPU kurulumu çalışır ama zayıftır. Gerçek konuşmada sonuç mikrofona ve gürültüye göre değişir.
+
+**Tanı modu (yalnız sorun ayıklamak için):** `.env` içinde `SESLI_KOMUT_TANI=true` (ya da masaüstü uygulaması > Ayarlar > "Sesli komut tanı modu") ve botu yeniden başlatın. ⚠️ **Tanı modunda uyandırma sözü bulunan (komut) cümlelerin metni loga yazılır ve masaüstü uygulaması logları diske kaydeder** (`%APPDATA%\Müzik Bot\kayitlar\bot.log`). Uyandırma sözü bulunan her cümle için tek satır: zaman, kişinin kimliğinden oturum başına rastgele tuzlu kısa bir karma (bot her açılışta tuz değişir), süre, VAD sonucu (başlangıç ms), tanınan metin, no_speech_prob, compression_ratio, avg_logprob, uyandırma eşleşmesi (tam ya da kırpık, bulunan kelimeler, mesafe, konum), niyet, ikinci geçiş, ipucusuz geçiş, yaş ve sonuç. Uyandırma sözü olmayan sohbet cümlelerinin metni tanı modunda da yazılmaz; yalnız "yoksay:uyandirma" ve süre. Uyandırma sözüyle başlayıp anlaşılmayan cümleler `data/sesli-komut-anlasilmayan.json` dosyasına da yazılır (son 200; yalnız metin ve zaman; görmek için `npm run sesli-komut:anlasilmayan`); tanı modu kapalıyken bot açılırken bu dosyayı siler. **Kendi testinizde açın, işiniz bitince kapatın.** Kapalıyken metin hiçbir yere yazılmaz; yalnız dakikada bir sayı satırı yazılır ("Sesli komut (son 1 dk): ... ses çerçevesi, ... cümle; sonuçlar {...}; işçinin attıkları {...}"), böylece işçinin ses alıp almadığı görülür.
+
+**Sınırlar:** Yalnız Türkçe. Bot ses kanalında değilken komut duyulmaz (önce `/play`). Windows ve Python 3.14 ile denendi.
+
 ## Bilinen sınırlar
 
 - **Kaynaklar:** YouTube, Spotify ve SoundCloud bağlantıları, doğrudan ses dosyası bağlantıları ve şarkı adları çalınabilir. Spotify bağlantıları YouTube'daki karşılığıyla çalınır ve Spotify uygulamasının sahibinin **Premium** üyesi olması gerekir (5. adım). Bandcamp, Twitch, Vimeo gibi kaynaklar aranabilir ama şimdilik çalınamaz.
@@ -710,6 +779,7 @@ npm --prefix desktop test   # masaüstü uygulamasının testleri
 - **Bot kapalıyken:** Çekiliş bitişi ve ücretsiz oyun kontrolü bot açılınca yapılır (kaçırılmaz ama gecikir). Takım listeleri yeniden başlatmada kaybolur; eski düğmeler "artık geçerli değil" der.
 - **Ücretsiz oyun kaynakları:** Epic'in adresi belgesizdir, haber vermeden değişebilir (o zaman Epic için GamerPower kullanılır). GamerPower'ın "Mağazada aç" bağlantısı GamerPower üzerinden mağazaya yönlendirir; bitiş saati yaklaşıktır.
 - **Platform:** Masaüstü uygulaması yalnız Windows içindir; bot yalnız Windows'ta denenmiştir.
+- **Sesli komut:** Discord ses almayı resmi olarak belgelemiyor; bir Discord güncellemesi onu bozabilir. Tanıma Türkçe içindir ve gürültüde, aksanda ya da kısık mikrofonda hata yapar (yanlış komut yerine çoğunlukla hiçbir şey yapmaz). Ayrıntılar 15. bölümde.
 
 ## Sorumluluk reddi
 
@@ -733,6 +803,11 @@ Bu depo aşağıdaki projeleri **içermez**; `npm install`, `npm run lavalink:in
 | [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) (isteğe bağlı) | PATH'te ffmpeg yoksa ffmpeg ikili dosyası | GPL-3.0-or-later (indirdiği FFmpeg derlemeleri de GPL) |
 | [Electron](https://github.com/electron/electron), [electron-builder](https://github.com/electron-userland/electron-builder) | Masaüstü uygulaması | MIT |
 | [@napi-rs/canvas](https://github.com/Brooooooklyn/canvas) | Seviye ve hoş geldin kartlarını çizmek (Skia; Windows için hazır derlenmiş, sistem kütüphanesi istemez) | MIT |
+| [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [CTranslate2](https://github.com/OpenNMT/CTranslate2) (isteğe bağlı) | Sesli komut: konuşma tanıma | MIT |
+| [Whisper](https://github.com/openai/whisper) ağırlıkları: [large-v3-turbo](https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo), [small](https://huggingface.co/Systran/faster-whisper-small) (CTranslate2 dönüşümleri; isteğe bağlı) | Sesli komut modelleri | MIT |
+| [Silero VAD](https://github.com/snakers4/silero-vad) (faster-whisper içinde) ve [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Konuşma başı/sonu algılama | MIT |
+| NVIDIA cuBLAS, cuDNN, CUDA Runtime (pip tekerlekleri; yalnız GPU kurulumunda) | GPU hızlandırma | NVIDIA yazılım lisansı (EULA); depoya konmaz, kurulumda NVIDIA'nın PyPI paketlerinden iner |
+| [uv](https://github.com/astral-sh/uv) (kullanıcı kurar) | Python ortamını kurmak | MIT / Apache-2.0 |
 
 Depoya **dahil** olan tek üçüncü taraf dosyalar kartların yazı tipleridir: [Noto Sans](https://github.com/notofonts/latin-greek-cyrillic) ve [Noto Emoji](https://github.com/googlefonts/noto-emoji) (`assets/fonts`), ikisi de [SIL Open Font License 1.1](https://openfontlicense.org) ile; lisans metinleri `assets/fonts/OFL-NotoSans.txt` ve `OFL-NotoEmoji.txt`. OFL yazı tiplerinin yazılımla birlikte dağıtılmasına izin verir; yazı tipleri tek başına satılamaz.
 

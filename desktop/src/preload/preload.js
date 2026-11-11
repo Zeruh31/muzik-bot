@@ -31,6 +31,10 @@ const INVOKE_CHANNELS = [
   'pano:kopyala',
   'sunucuAyar:al',
   'sunucuAyar:kaydet',
+  'sesliKomut:durum',
+  'sesliKomut:kur',
+  'sesliKomut:iptal',
+  'sesliKomut:kaldir',
 ];
 const EVENT_CHANNELS = [
   'olay:durum',
@@ -40,6 +44,7 @@ const EVENT_CHANNELS = [
   'olay:botDurumu',
   'olay:sunucuAyar',
   'olay:sunucuAyarDurum',
+  'olay:sesliKomut',
 ];
 
 function invoke(channel, ...args) {
@@ -83,6 +88,11 @@ contextBridge.exposeInMainWorld('muzik', {
   openExternal: (url) => invoke('dis:ac', String(url)),
   copy: (text) => invoke('pano:kopyala', String(text)),
   serverSettings: (guildId) => invoke('sunucuAyar:al', String(guildId)),
+  // Voice command component: the window only picks "gpu" or "cpu"; the main process builds every path.
+  voiceStatus: () => invoke('sesliKomut:durum'),
+  installVoice: (profile) => invoke('sesliKomut:kur', profile === 'gpu' ? 'gpu' : 'cpu'),
+  cancelVoiceInstall: () => invoke('sesliKomut:iptal'),
+  removeVoice: () => invoke('sesliKomut:kaldir'),
   // Only these four fields reach the main process, which checks them against the bot's schema.
   saveServerSetting: (change) =>
     invoke('sunucuAyar:kaydet', {

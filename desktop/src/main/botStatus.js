@@ -137,6 +137,19 @@ function normalizeStatus(raw) {
     counters: { total: counters(sayaclar.toplam), session: counters(sayaclar.oturum) },
     servers,
     playingCount: servers.filter((s) => s.playing && !s.playing.paused).length,
+    voice: voiceCommands(raw.sesliKomut),
+  };
+}
+
+/** The bot's voice command state (older bots write none: null). */
+function voiceCommands(raw) {
+  if (!isObject(raw)) return null;
+  return {
+    installed: bool(raw.kurulu),
+    worker: ['kapali', 'basliyor', 'hazir', 'hata'].includes(raw.isci) ? raw.isci : 'kapali',
+    device: raw.cihaz === 'cuda' || raw.cihaz === 'cpu' ? raw.cihaz : null,
+    model: raw.model === 'turbo' || raw.model === 'small' ? raw.model : null,
+    guilds: num(raw.dinlenenSunucu),
   };
 }
 

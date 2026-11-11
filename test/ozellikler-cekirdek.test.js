@@ -90,6 +90,7 @@ describe('module definitions', () => {
         'muzik',
         'roller-ve-ara',
         'sans',
+        'sesli-komut',
         'seviye',
         'takim',
         'ucretsiz-oyunlar',

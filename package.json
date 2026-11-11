@@ -31,7 +31,8 @@
     "check": "node scripts/check.js && node scripts/deploy-commands.js --check",
     "test": "node --test \"test/**/*.test.js\"",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sesli-komut:anlasilmayan": "node scripts/sesli-komut-anlasilmayan.js"
   },
   "dependencies": {
     "@discordjs/opus": "0.11.0",

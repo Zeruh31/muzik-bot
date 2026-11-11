@@ -53,6 +53,18 @@ function guildView(guild, { music, settings, songsByGuild, botId }) {
   };
 }
 
+/** { kurulu, isci: 'kapali'|'basliyor'|'hazir'|'hata', cihaz: 'cuda'|'cpu'|null, model, dinlenenSunucu } */
+function voiceCommandView(sesliKomut) {
+  const state = sesliKomut?.durum?.() ?? null;
+  return {
+    kurulu: Boolean(state?.kurulu),
+    isci: state?.isci ?? 'kapali',
+    cihaz: state?.cihaz ?? null,
+    model: state?.model ?? null,
+    dinlenenSunucu: num(state?.dinlenenSunucu),
+  };
+}
+
 /**
  * The whole data/durum.json object. Only reads from the context; never includes the token,
  * secrets or who requested a song.
@@ -93,6 +105,8 @@ export function buildStatus(context, { running = true, now = Date.now() } = {}) 
       memoryUsed: node?.memoryUsed ?? 0,
     },
     sayaclar: counters,
+    // Voice commands (added later; the app shows "kurulu değil / hazır / çalışıyor"). No speech, only the state.
+    sesliKomut: voiceCommandView(context.sesliKomut),
     sunucular: guilds.map((guild) =>
       guildView(guild, { music, settings, songsByGuild: counters.toplam?.songsByGuild ?? {}, botId }),
     ),

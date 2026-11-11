@@ -18,6 +18,8 @@ export class ConfigError extends Error {
 }
 
 const SEARCH_SOURCES = ['ytmsearch', 'ytsearch', 'scsearch'];
+/** Speech model of the voice commands (bot-wide: one worker serves every server). */
+export const VOICE_MODELS = ['otomatik', 'turbo', 'small'];
 const SNOWFLAKE = /^\d{17,20}$/;
 
 let envLoaded = false;
@@ -134,6 +136,10 @@ export function loadConfig({ requireToken = true } = {}) {
     throw new ConfigError('LAVALINK_PASSWORD boş. .env dosyasına bir şifre yazın (Lavalink de aynı şifreyle açılır).');
   }
 
+  const voiceModel = readString('SESLI_KOMUT_MODEL', 'otomatik');
+  if (!VOICE_MODELS.includes(voiceModel)) {
+    throw new ConfigError(`SESLI_KOMUT_MODEL şunlardan biri olmalı: ${VOICE_MODELS.join(', ')}.`);
+  }
   const searchSource = readString('SEARCH_SOURCE', 'ytmsearch');
   if (!SEARCH_SOURCES.includes(searchSource)) {
     throw new ConfigError(`SEARCH_SOURCE şunlardan biri olmalı: ${SEARCH_SOURCES.join(', ')}.`);
@@ -155,6 +161,8 @@ export function loadConfig({ requireToken = true } = {}) {
       maxQueueSize: readInt('MAX_QUEUE_SIZE', 1000, 1, 10_000),
       playShowChoices: readBool('PLAY_SHOW_CHOICES', true),
     }),
+    // Voice commands (src/ozellikler/sesli-komut): which speech model the worker loads.
+    voice: Object.freeze({ model: voiceModel, tani: readBool('SESLI_KOMUT_TANI', false) }),
     embedColor: readColor('EMBED_COLOR', 0x5865f2),
     // Links under /help. All empty by default: nothing is shown until the bot owner fills them in.
     brand: Object.freeze({
